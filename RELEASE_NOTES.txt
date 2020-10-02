@@ -1,0 +1,514 @@
+The uvot grism python software release notes
+============================================
+
+Version 2.2  2017-05-16 
+
+Due to changes in the Astropy package and others, minor fixes 
+were made throughout the code. For Astropy 1.2.1 a part of the 
+FITS code was broken, but it is not a critical problem. That 
+was fixed in Astropy-1.2.2.
+
+A refined calibration is being worked on, as with ten years of 
+observations we can refine our numbers a little. That will be in 
+a future release. 
+
+The uvotspec script has not been maintained for some time now, 
+as the data reduction is more effectively done using the ipython 
+environment.  If anyone wants to contribute an update, that would 
+be great. 
+
+
+Version 2.1.0 2016-03-11
+
+The code in the core modules has been cleaned up somewhat and
+been updated to the astropy.io fits module conventions. 
+
+An attempt was made to improve the aspect correction for 
+single grism images, i.e., match the zeroth orders better, but 
+more work needs to be done. 
+
+The post-extraction processing in the uvotspec module has 
+been developed further and allows to manually apply a wavelength 
+shift with triggered recalculation of the dispersion solution. 
+The procedure to sum spectra has been moved from uvotgetspec to
+uvotspec and has been partially rewritten as the original code 
+was not easy to maintain. 
+
+An intermediate release, version 2.0.5 had some issues with 
+finding calibration files. to solve that the uvotio output module 
+was partially rewritten to remove ancient parts that caused trouble.
+
+The verbosity of the code was examined and some output was 
+moved to a higher verbosity level to get a cleaner output. 
+
+I probably made some other changes, most of which may be found 
+by checking the github repository comments. 
+
+
+Version 2.0.4 2015-04-28 
+
+Minor changes were made due to API changes in astropy and numpy. 
+Since version 2.0.2 the coincidence loss correction has been 
+identical to that described in the calibration paper and used for 
+the calibration. In version 2.0.0 and 2.0.1 the coincidence loss 
+method was not yet fine-tuned. Differences are less than 5% in 
+the final flux. 
+
+Some new functionality is being added in this version in module
+uvotspec. Recognizing that the wavelength between successive 
+spectra is shifted to some degree, the software adjust_wavelength_manually
+allows easy adjustment of the wavelength by shifting the spectrum in a widget
+and using the shift to update the wavelengths using the dispersion
+relation. This improves the wavelengths at the end of the range. 
+The automatic flagging of artifacts in the code needs further work, 
+and an interactive routine flag_bad_manually (also in module uvotspec) 
+will set the quality flag 'bad' in the spectral file. 
+
+To sum spectra, there was a routine written specifically with the 
+calibration environment in mind, and it had over time evolved in 
+a tangle of options and did not suit the general user. A new, rewritten
+sum_PHAspectra has been provided now in the uvotspec module as well, 
+though examples of its use have not yet been prepared. 
+
+For Xspec users, the RMF file generation was rewritten as there 
+was in unintended loop in the previous version. Testing with the 
+new rmf file revealed that lines with very large coincidence losses 
+are not well described by the RMF, preventing a good fit. It is best 
+to exclude these lines from the fit if this occurs. 
+A script has been added that can be run to generate the RMF file 
+so that the spectral extraction can be done without that step. 
+
+With the changes to Numpy and Astropy, and no time for testing old version, 
+the current release has been making use of the Ureka 1.5.1 distribution. 
+It is believed to be backward compatible to versions of astropy >= 0.4. 
+Heasoft-6.16. 
+
+A python script named consert_sky2det2raw was added to derive the position 
+on the raw image given that on the sky or detector image (for uvot 
+photometry with lenticular filters). The accuracy is about 5 pixels 
+and the script is slow unless a long list is given, as the initialization 
+is slow. 
+
+Version 2.0 2014-06-01 
+
+The coincidence method was updated to the classic coincidence 
+formula with a the coincidence loss computed for the count 
+rate in a slightly larger area of 414 pixels. The effect of the
+background contribution has been set to zero as the current 
+calibration measurements show no longer a dependency. 
+
+
+Version 1.0.1 2013-11-19
+
+Bug fixes to make code compatible with Numpy 1.9, Scipy 0.14.0.
+
+
+Version 1.0 2013-11-01
+
+General
+-------
+
+**This code is designed for processing Swift UVOT Grism images**
+  
+  The goal is to process the spectra in the image, to do 
+  quality control and source identification. Because the UVOT is 
+  a photon counting detector, the error handling must keep track 
+  of the errors which require in principle the total exposure, 
+  the background exposure, and the exposure time. The data quality
+  for each pixel should be flagged also (e.g., data dropouts, 
+  scattered light rings, halo around bright features), but flagging 
+  is only done for nearby zeroth orders. While the count rate errors 
+  follow from the observed binomial nature of the detector, e.g., 
+  Kuin & Rosen (2008,MNRAS, 383,383) - though that prescription was 
+  for point sources. A heuristic method was used to develop a 
+  correction for coincidence loss used in this program. 
+  
+  Details of the accuracy and reliability of the calibration and 
+  software are soon to be submitted to the Monthly Notices of the 
+  RAS. 
+  
+  This program extracts the spectra, applies the wavelength 
+  calibration file to find anchor position and wavelength 
+  dispersion. The flux calibration is valid over the whole 
+  detector and depends on the effective area and coincidence
+  loss correction.  In *both grisms* the effective area was 
+  determined at several offset positions  The accuracy of the 
+  flux in the *uv grism* is of order 5% in the centre and 
+  about 10% at other locations on the detector. In the 
+  *visible grism* the accuracy of the flux is 20%, which error 
+  is dominated by that in the coincidence loss correction.  
+     
+  In the nominal grism mode (wheelpos = 200, 1000) the 
+  response varies by about 5% from centre to about  200 pixels 
+  from the edge. In the clocked grism modes (wheelpos = 
+  160, and 955) the response has a strong drop when the spectrum 
+  falls in the upper left corner. For the rest of the image 
+  the response varies less than ~20% in the clocked modes. 
+  
+  Before using this code, it is recommended to reprocess the raw 
+  image using the *mod-8 correction*. Use a CALDB later than May 2010 
+  for an improved distortion correction. The grism detector image 
+  should be attitude corrected using uvotgraspcorr. Check the header
+  keyword ASPCORR='GRASPCORR'. 
+  
+  Find out the RA and DEC position in decimal degrees from the 
+  USNO-B1 catalog for your object  since the UVOT aspect corrections 
+  also use the USNO-B1 positions, so you will avoid a systematic error 
+  in positions which will translate to a shift in the wavelengths 
+  derived. 
+  
+  You need to set the environment variable UVOTPY to point to the 
+  directory with the UVOTPY code and spectral calibration files. 
+  
+  The input data files may have to be decompressed before running 
+  the program, although it will try to do that itself, but does 
+  not recompress the files again. 
+  
+  The program was developed running in iPython, and it is suggested to 
+  run interactively in iPython rather then run as it this script. 
+  
+  Second order extraction and calibration are only treated very roughly at 
+  this time. Zeroth orders are only minimally identified. Third order 
+  location is approximate. 
+   
+Main functions
+--------------
+  getSpec : main call for spectral data extraction  
+  
+Other uvotpy functions
+-------------------------
+  curved_extraction: set curvature of orders, set quality flags, get spectral data 
+  extractSpecImg : get sub image 
+  findBackground : get background
+  get_components : extract first, second, third order components
+  getCal : get the (wave) calibration files
+  predict_second_order : use first order to predict second order (very rough)
+  coi_func : return an interpolating function(wave) for the coincidence loss of a spectrum [experimental]
+
+Specialized functions are in modules
+------------------------------------
+  uvotgetspec: repository of main functions  
+  uvotio:    writes file output
+  uvotio.rate2flux : convert count rate to flux 
+  uvotplot : plot routines
+  uvotmisc : miscellaneous routines
+  
+Files  
+------  
+  The program assumes all data files are available in either the working 
+  directory, or the directory structure complies with the Swift project 
+  standard and is run from the <obsid>/uvot/images directory, while 
+  the attitude file is available in the <obsid>/aux directory.  
+  There is rudimentary support for running from a remote directory on the 
+  same device, but the program will write some files to both the current and
+  the data directories.
+
+  The flux-calibrated 1st order spectrum is available in the second extension of the 
+  output file.
+
+  From version 1.0 onwards, the file name includes a flag "_f" for when lenticular
+  filter image(s), or "_g" when "uvotgraspcorr" aspect corrections were used 
+  to derive the anchor position. Both methods give similar uncertainties, but
+  for the same field uvotgraspcorr will give more consistent results, while 
+  the lenticular filter method works when uvotgraspcorr cannot find an aspect 
+  correction (in that case the uncorrected pointing position from the star trackers 
+  will be used).  
+            
+History
+-------
+
+2013-Oct-31 Paul Kuin
+--------------------------
+Rewritten uvotwcs to fix a bug in the calculation of the pointing. Small fixes
+all throughout. Output file names will have a flag for the anchor point method used.
+
+2013-May-23 Paul Kuin
+-------------------------
+revised the uv grism clocked mode wavecal for first and second order. Missing 
+still is second order effective area. 
+
+March 2013: Flux calibration for the uv-grism 
+---------------------------------------------
+The new calibration file has multiple extensions. The first extension is 
+the original flux calibration, which did not correct for the coincidence 
+loss and which is to be used with the "Ftool" **uvotimgrism**.  Then 
+follow extensions with the measured effective areas at various positions
+on the detector. These have been corrected for coincidence-loss during the
+calibration.  The number depends to some extent on how much the 
+effective area varies with position. Finally, a normalised flux from 
+a rescaled model is included that can be used to extrapolate from one 
+of the effective areas at a nearby position. A new routine in uvotio 
+reads the effective area and model scaling to offset if present. 
+
+A start has been made with using Sphinx (http://sphinx.org) for 
+documentation on the web. This includes changing the inline documentation 
+of the software. Keep an eye on http://www.mssl.ucl.ac.uk/~npmk/Grism/. 
+
+A preliminary flux calibration for the visual grism has been made. It 
+supersedes the old calibration which did not take any coincidence-loss 
+correction into account. However, future improvements are expected. 
+
+October 2012: Initial extension of flux calibration uv-grism 
+------------------------------------------------------------
+The software has been updated to support a working coi-correction, though 
+not the final one, and use the new flux calibration where available. The 
+calibration file closest to the position on the detector image will be 
+used. More calibration files will be supplied when they become available.
+The comparison of the new calibration and coi-loss correction with 
+calibration spectra can be seen on my web site.
+ 
+The package has now been created using Python distutils. 
+
+
+March 2012: An experimental coincidence loss correction
+-------------------------------------------------------
+The background in the grism is quite high and in itself experiences about 3% 
+coi-loss. The extended nature of the background has been cause for concern, 
+but tests reported in Breeveld et al. (2010) did in fact show that the 
+correction method from Poole et al. (2008) works well also in that case. 
+However, the case for an extended linear feature, like a spectrum has not 
+been studied. The symmetries are different, and it is not a priori clear 
+how to best generalize the method from Poole et al. But with estimated 
+coi-loss peaking at 3% for a 16th mag WD and estimated 7% for a 14th mag
+WD, with maximum coi-loss close to 50% for a 12th mag WD, it is clear that 
+a solution is desirable as part of a flux calibration that is meaningfull.
+The WD are probably the worst case, since they are bright around 3000A where 
+the effective area (and the count rate) peaks   
+
+March 2012: discovery of variable sensitivity over face of uv clocked detector image
+------------------------------------------------------------------------------------
+Over most of the detector, the sensitivity only changes by a few percent. So 
+it was a bit of a shock to see that in the clocked uv grism images, the 
+detector sensitivity drops quite a lot in the upper left corner of the 
+detector. More so, since this area had been selected to place spectra 
+to completely avoid the zeroth orders.  This is under investigation. We are
+using the Zemax optical model to get a quantitative, though approximate, 
+measure of this effect. 
+
+April 2012: predicting the uv grism exposure
+--------------------------------------------
+For some faint objects, there is often uvot photometry in the uv filters 
+available. It is of a given magnitude, but what does that mean for the 
+uv grism.  I made a tool that will make a rough estimate of the exposure 
+time needed to get a certain signal-to-noise, assuming a certain background
+and given a magnitude of the object as observed in a uvot filter. There is 
+loads of uncertainty when the source is faint, and the background over the 
+UV clocked grism varies. It defaults to 0.16c/s/pix(across the spectrum) but
+a value of 0.05 may happen depending of where the (uv part of) the spectrum
+lies on the detector. So for now, I put in the most reasonable value. 
+If the source is getting faint, the exposure time will climb through the roof. 
+Experience must tell how good it is and how to use it.
+
+Altermatively a spectrum can be put in a will give a magnitude in the 
+lenticular filters. The uvotphot.py file will be needed. 
+
+April 2012: estimate of the zeroth order effective area
+-------------------------------------------------------
+The uv grism efficiency in the zeroth first and second order 
+estimate were needed for calculating the flux sensitivity over 
+the detector using the Zemax optical model. A rough approximation 
+of the zeroth order effective area was determined in the course 
+of that work. Details have been written in a report. 
+
+April 2012: determining the effective area in the uv detector
+-------------------------------------------------------------
+
+
+Version 0.9.7.1 
+
+2013-03-14 uvotio : modified interpolation normalised flux model to linear 
+   to fix problems. Added correction for sensitivity loss to rate2flux(). 
+2013-03-14 calfiles/swugu0160_20041120v102.arf: extended the wavelength coverage
+   of the effective area to below 1700A for three locations on the detector
+
+  
+  
+Version 0.9.7 March 2013
+Paul Kuin (npkuin@gmail.com|n.kuin@ucl.ac.uk)
+
+This software is under development. Software is released for testing only.
+User of the software agreed that no responsibility for any losses of any kind 
+resulting out of use of this software are attributable to  
+the author, the MSSL, UCL, or contracting organizations.
+
+This software may be freely distributed and used for scientific research 
+provided this ReadMe notice is included and the author is invited to 
+coauthor papers using this early version of the software. 
+
+The software requires 
+
+(1) an existing installation of the STScI python, including the Scipy software, 
+for Python version 2.7. A package can be downloaded from 
+ http://www.stsci.edu/resources/software_hardware/stsci_python/current/download 
+Note that you also will need to install gfortran (link at the bottom of that 
+page) to make it work. If you have pyraf installed, it may already be there.
+
+(2) Installation of the Heasoft Ftools/SWIFT software, release not earlier than 
+version 6.10.  Download from http://heasarc.gsfc.nasa.gov/docs/software/lheasoft/ .
+
+
+(3) Installation of the HEASARC CALDB for Swift, version later than Oct 13,2011.
+Download the CALDB for Swift from:
+http://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/caldb_supported_missions.html
+
+(4) Installation of WCSTOOLS, in particular 'scat'. On unix/linux type system the 
+command 'which scat' should return the location. If it does not return 
+anything, install: 
+http://tdc-www.harvard.edu/software/wcstools/wcstools-3.8.4.tar.gz   
+and remove or rename the program cphead that it installs, since it clashes 
+with cphead in heasoft as used by the uvotproduct ftool.
+
+(5) Installation of CDSCLIENT which provides the 'sesame' name resolver.[optional] 
+    http://cdsarc.u-strasbg.fr/doc/cdsclient.html
+
+(6) setup of the environment: ($HOME/.cshrc for csh users or $HOME/.bashrc 
+    for bash or sh users)
+   - add the directory with this software to the PYTHONPATH environment variable.
+   - set UVOTPY to the directory with this software 
+   - add the WCSTOOLS/bin and cdsclient directories to your PATH     
+
+
+The program is intended to be run from within iPython (see the user
+manual http://stsdas.stsci.edu/stsci_python_epydoc_2.12/docs/pydatatut.pdf
+if you are unfamiliar with Python and iPython), but should also have
+the ability to be run from the command line with a bunch of options,
+but then the uvotgrism.py file needs to be in your path.
+
+Like,
+
+>cp uvotgrism.py ~/bin/
+>rehash
+
+Once there,
+>uvotgrism.py -h
+gives  a list of options. The most important ones should work. It
+needs to be run from the directory with the grism file, and assumes
+the typical swift directory structure to look for files like the
+attitude file. I'll need to test this method again since there were
+many changes in the last month.
+
+
+Unsolved problems: (version 0.9.7)
+
+The program is for some options producing copious, many many, warning 
+messages. I have not found a way to quiet them yet. They mostly come 
+from the program to do a nonlinear fit of (a) gaussian(s).  Sorry 
+about that.
+
+The output files still need to be fine tuned. In particular the 
+second order needs to be added to the output. This depends on the 
+second order flux calibration. 
+
+The optimal extraction method is not correct and development has been 
+stopped. Basically, the coincidence loss patterning resulting from 
+the centroiding is making the method not any better than a careful 
+fit of the extraction slit and using an aperture correction.  
+
+The software has mostly been tested on the uv grism in interactive 
+mode. 
+Some of the optional parameters, like specifying the anchor position 
+and angle of the spectrum have not been tested. 
+
+
+Version 0.9.5.1
+
+Update: the RMF file is now written correctly. 
+Some other minor problems were fixed. The RMF file is no longer 
+written by default since it takes a very long time to do. It can 
+be reenabled with a global parameter.
+
+Earlier versions:
+
+
+Version 0.9.5 
+January 2012
+
+The backend part was rewritten, in particular to include the 
+data for the second order. However, that is still buggy. 
+
+The RMF file is now written directly without calling the 
+uvotrmfgen program, but a bug remains where the old CALDB is 
+used even when the data is written with the new flux cal files.
+
+Bugs in the 'update curvature' were fixed, and I thought it 
+prudent to remove the 'try' block around the curvature update. 
+However, this may cause the code to fail if I did miss some errors.
+
+The $UVOTPY/calfiles/ now include the effective area files measured 
+at the top right hand corner offset.  they are mostly based on the 
+white dwarf spectra, but a discrepancy was found with the F0V calibration
+stars, which is probably due to the sensitivity falling off in the 
+last 150 pixels or so. This is most likely due to a reduction of 
+incoming light due to the smaller aperture in the clocked grism. 
+For now, the default calls the new effective area files.
+
+The flux is measured only in a 1-sigma width of the spectral track.
+To my best estimates, the cross-dispersion response is gaussian. 
+It may be Lorentzian but that is all in the noise. So I am applying 
+an aperture correction to the measured flux. The new effective area
+is based on using that aperture correction. As a result there is a 
+small difference with the original CALDB effective area (which is 
+for the centre of the detector).  The calibration is still in full
+progress, so this is a temporary solution.  For now, the effective 
+area is assumed to be constant to within 30% over the detector. 
+If we base the variation on the photometric properties the effective 
+area will probably be constant within 5% of the centre.  Time will tell.
+
+The code was modified to sum spectral images taken at more-or-less 
+the same detector position, and to reduce the summed extracted image similar 
+to the individual grism images. See README.sum_spectra for details.
+
+There were some further minor bug fixes, which I will not 
+detail here. 
+
+I am making this release available since there have been some major 
+improvements since the last version, and fixing the remaining
+software and calibration issues will take probably another month at 
+least.  
+
+
+Earlier versions:
+
+Version 0.9.4.2
+
+Bug fixes
+
+Version 0.9.4.1
+
+Background redone
+
+Version 0.9.4
+
+The routine updating the line spread function works, but is slow.  
+
+The axis label of the image in Fig 2 has been fixed, as well as the 
+plotting of the crosses at the suspect data. 
+
+When calling uvotgrism.py from the command line, the parameters are now
+passed in a more direct way. The global variables that were not needed 
+have been removed. 
+
+I changed back the color table for the fig.2.1, and use the image including the 
+background. 
+Version 0.9.3.7
+
+Last version with background based solely on rows 0-30 and 170-200 in 
+the extracted image. 
+
+The linespread function is updated in the rmf file (for some reason it
+is taking a long time -- needs to be fixed).
+
+Version 0.9.3.8 
+
+Corrected an error in the conversion from count rate to flux. The flux
+was too large by a factor 2 due to the pixelsize being a factor 0.5 of 
+what it should have been. 
+
+Now background regions between selected  rows on the extracted image 
+can be done. 
+
+The program rectext has been unset as the default to extract the subimage 
+until the next version of heasoft with the updated rectext appears.
+
+
+
