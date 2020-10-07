@@ -393,6 +393,25 @@ def GaussianHalfIntegralFraction(x):
    A_x = 2.*P_x - 1
    return  A_x  
 
+def SmearGaussianHalfIntegralFraction(sigma, motion, tw):
+    from scipy import interpolate
+    import numpy as np
+    from uvotgetspec import smeargaussian
+    A = 50
+    mu = 100
+    x = np.arange(0.5,200.5)
+    y = smeargaussian(x, A, mu, sigma, motion, normalize=True)
+    f = interpolate.interp1d(x,y,fill_value="extrapolate")
+    x1 = mu-(sigma*tw+motion/2)
+    x2 = mu+(sigma*tw+motion/2)
+    step = 0.1
+    x_aster = np.arange(x1,x2+step,step)
+    x_aster = (x_aster[:-1]+x_aster[1:])/2
+    y_aster = f(x_aster)
+    total = np.sum(y)*(x[1]-x[0])
+    aster = np.sum(y_aster)*step
+    return aster/total
+
 def uniq(list):
    ''' preserves order '''
    set = {}

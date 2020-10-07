@@ -66,6 +66,7 @@ from scipy import interpolate
 from scipy.ndimage import convolve
 from scipy.signal import boxcar
 from scipy.optimize import leastsq
+from scipy.special import erf
 from numpy import polyfit, polyval
 '''
 try:
@@ -145,8 +146,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       wheelpos=None, interactive=interactive,  sumimage=None, set_maglimit=None,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True,
-      update_pnt=True,  
-      clobber=False, chatter=1 ):
+      update_pnt=True, ifmotion=False, motion_file=None,
+      clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
    
@@ -1042,7 +1043,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              fit_second=fit_second, 
              fit_third=fit_second, 
              C_1=C_1,C_2=C_2,dist12=dist12, 
-             dropout_mask=dropout_mask, 
+             dropout_mask=dropout_mask, ifmotion=ifmotion,
+             obsid=obsid,indir=indir,motion_file=motion_file,
              chatter=chatter) 
          # fit_sigmas parameter needs passing 
       (present0,present1,present2,present3),(q0,q1,q2,q3), (
@@ -1089,7 +1091,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              msg = msg, curved=curved, 
              fit_second=fit_second, 
              fit_third=fit_second, C_1=C_1,C_2=C_2,dist12=dist12, 
-             dropout_mask=dropout_mask, 
+             dropout_mask=dropout_mask, ifmotion=ifmotion,
+             obsid=obsid,indir=indir,motion_file=motion_file,
              chatter=chatter) 
              
       (present0,present1,present2,present3),(q0,q1,q2,q3), \
@@ -1628,7 +1631,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
    flog.write(msg)
    flog.write(msg2)
    flog.close()
-   plt.show()
+   #plt.show()
    if give_result: return Y0, Y1, Y2, Y3, Y4   
    if give_new_result: return Yout
 
@@ -3162,8 +3165,10 @@ def spec_curvature(wheelpos,anchor,order=1,):
           2.20540397e-07,  -1.62674045e-07,   8.70230076e-08,\
          -1.13489556e-07]),3,3]
                      
-       coef = array([interpolate.bisplev(xin,yin,tck_c3),interpolate.bisplev(xin,yin,tck_c2),\
-                     interpolate.bisplev(xin,yin,tck_c1), 0.])
+       #coef = array([interpolate.bisplev(xin,yin,tck_c3),interpolate.bisplev(xin,yin,tck_c2),\
+       #              interpolate.bisplev(xin,yin,tck_c1), 0.])
+       coef = array([interpolate.bisplev(xin,yin,tck_c3)*0.5,interpolate.bisplev(xin,yin,tck_c2)*0.5,\
+                     interpolate.bisplev(xin,yin,tck_c1)*0.5, 0.])   #~FIXME:      
        return coef
        
      elif order == 2: 
@@ -3346,8 +3351,8 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
     poly_1=None,poly_2=None,poly_3=None, set_offset=False, \
     composite_fit=True, test=None, chatter=0, skip_field_sources=False,\
     predict_second_order=True, ZOpos=None,outfull=False, msg='',\
-    fit_second=True,fit_third=True,C_1=None,C_2=None,dist12=None,
-    dropout_mask=None):
+    fit_second=True,fit_third=True,C_1=None,C_2=None,dist12=None, ifmotion=True,\
+    dropout_mask=None,obsid=None,indir=None,motion_file=None):
    '''This routine knows about the curvature of the spectra in the UV filters  
       can provide the coefficients of the tracks of the orders
       can provide a gaussian fit to the orders
@@ -3557,7 +3562,8 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
       
        ny = int(ny)
        cp2 = zeros(ny)
-       delpix = 20
+       cp2_spimg = zeros(spimg.shape) #~TODO:
+       delpix = 50
        if wheelpos == 200: delpix=25  # the accuracy for the nominal uv anchor is not as good.
        offsetset = False    
        if type(offsetlimit) == list: 
@@ -3570,7 +3576,6 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
        eo = int(anky-100)
        if set_offset: 
            eo = int(offset-100)
-   
        for q in q1[0]:
           if ((x[q] < 600) & (x[q] > -200) & (quality[q] == 0)):
             try:
@@ -3578,22 +3583,48 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
               m1 = 0.5*ny+delpix + eo #int( 3*(ny+1)/4)+1
               yoff = y1[q] - anky   # this is just the offset from the anchor since y1[x=0] was set to anky
               cp2[int(m0-yoff):int(m1-yoff)] += spimg[int(m0):int(m1),q].flatten()
+              cp2_spimg[int(m0-yoff):int(m1-yoff),q] += spimg[int(m0):int(m1),q].flatten()
             except:
                print("skipping slice %5i in adjusting first order y-position"%(q))
                pass 
-          
+       fig = plt.figure()
+       plt.title(obsid)
+       #plt.show()
+       #print(np.sum(cp2_spimg[:,1632:1832],axis=1),len(np.sum(cp2_spimg[:,200:400],axis=1)))
+       plt.plot(arange(200),np.sum(cp2_spimg[:,1032:1232],axis=1)/expmap[0],label='-200-0/1032-1232')
+       plt.plot(arange(200),np.sum(cp2_spimg[:,1232:1432],axis=1)/expmap[0],label='0-200/1232-1432')
+       plt.plot(arange(200),np.sum(cp2_spimg[:,1432:1632],axis=1)/expmap[0],label='200-400/1432-1632')
+       plt.plot(arange(200),np.sum(cp2_spimg[:,1632:1832],axis=1)/expmap[0],label='400-600/1632-1832')
+       plt.legend()
+       plt.ylabel('count rate per bin')
+       plt.title(obsid)
+       plt.savefig(indir+'/'+obsid+'_wing.png')
+       plt.close()
        if offsetset: 
            yof = offsetval - anky
            if chatter > 1:
                print("spectrum location set with input parameter to: y=%5.1f"%(offsetval))
            msg += "spectrum location set with input parameter to: y=%5.1f\n"%(offsetval)
        else:    
-           #(p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
-           (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(200)) ) #~FIXME:
+           if ifmotion:
+               motion = abs(obsid2motion(obsid,motion_file)['V'])
+               (p0,p1,p2), ier = leastsq(Fun4, (cp2.max(),anky,3.2), args=(cp2,arange(200),motion) ) #~FIXME:
+           else:
+               (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
+           p3= motion
+           sigma_mean=np.mean(polyval(sig1coef,x))
+           print(p0,p1,p2,p3,sigma_mean)
+           fig = plt.figure()
            plt.plot(arange(200),cp2)
-           plt.plot(arange(200),singlegaussian(arange(200),p0,p1,p2))
-           plt.show()
-           print(p0,p1,p2)
+           plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
+           plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+           plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+           plt.xlabel('y pixels')
+           plt.ylabel('total counts')
+           plt.title(obsid+' motion:'+"%.2f"%motion)
+           plt.savefig(indir+'/'+obsid+'_fit.png')
+           #plt.show()
+           plt.close()
            yof = (p1-anky) 
            if chatter > 1:
                print("\n *** cross-spectrum gaussian fit parameters: ",p0,p1)
@@ -3743,8 +3774,14 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                else: expospec[0,i] = expmap[k1:k2,i].mean()
       
       if present1:
+         #if ifmotion:
+         #    apercorr_value = x_aperture_correction(0,0,sig1coef,100,norder=1,mode='gaussian',
+         #                                           sigma=p2,motion=motion,tw=trackwidth,ifmotion=ifmotion)
          for i in range(nx): 
-            sphalfwid = trackwidth *p2#polyval(sig1coef,x[i]) #~FIXME:
+            if ifmotion:
+                sphalfwid = trackwidth *polyval(sig1coef,x[i])+motion/2 #~FIXME:
+            else:
+                sphalfwid = trackwidth * polyval(sig1coef,x[i])
             # if (x[i] < 30): sphalfwid *= bluetrackwidth
             spwid = 2*sphalfwid
             #splim1 = 100+offset-sphalfwid+1   changes 19-feb-2012
@@ -3761,7 +3798,12 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_first[i] = bgimg[k1:k2,i].sum()
                borderup[1,i]   = k2
                borderdown[1,i] = k1
-               apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1)
+               if ifmotion:
+                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,mode='gaussian',
+                                                         sigma=polyval(sig1coef,x[i]),motion=motion,ifmotion=ifmotion)
+               #    apercorr[1,i] = apercorr_value
+               else:
+                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1)
                if len(expmap) == 1: expospec[1,i] = expmap[0]
                else:  expospec[1,i] = expmap[k1:k2,i].mean()
                if dropout_mask != None:
@@ -3777,7 +3819,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                        at2[i] = (map_strong[i,k5:k6] == False).any()
                    quality[at1] = qflag['weakzeroth']
                    quality[at2] = qflag['zeroth']        
-                   quality[at3] = qflag['bad'] 
+                   quality[at3] = qflag['bad']
                
       if present2:
          for i in range(nx): 
@@ -3942,7 +3984,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                       
       return fitorder, gfit, (bgimg,)
 
-def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wheelpos=None):
+def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wheelpos=None, sigma=3.2,motion=10, tw=2.5, ifmotion=True):
    '''Returns the aperture correction factor 
    
       parameters
@@ -4041,8 +4083,11 @@ def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wh
       sig = np.polyval(sigcoef,x)  # half width parameter sig in pixels
       xx = 0.5*(k2-k1)/sig         # half track width in units of sig 
 
-      if (mode == 'gaussian') | (xx > 4.5):     
-         apercorr = 1.0/uvotmisc.GaussianHalfIntegralFraction( xx )
+      if (mode == 'gaussian'):# | (xx > 4.5):
+         if ifmotion:     
+             apercorr = 1.0/uvotmisc.SmearGaussianHalfIntegralFraction(sigma,motion,tw) #~FIXME:
+         else:
+             apercorr = 1.0/uvotmisc.GaussianHalfIntegralFraction( 0.5*(k2-k1)/np.polyval(sigcoef,x) )
       elif (wheelpos != None):
           # low coi for wheelpos = 160,200; medium coi for wheelpos = 955, 1000
           if wheelpos == 160:
@@ -4322,7 +4367,6 @@ def get_components(xpos,ori_img,Ypositions,wheelpos,chatter=0,caldefault=False,\
 
    # start with fitting using a fixed sig 
    # to get the peaks fixed do them one by one
-   
    if len(Ypositions) < 4 :
       #  FIT ONE PEAK for all observations
       # first guess single gaussian fit parameters
@@ -4352,7 +4396,6 @@ def get_components(xpos,ori_img,Ypositions,wheelpos,chatter=0,caldefault=False,\
    q = where( (y < p1+width) & (y > p1-0.5*width) )   # if direction known, one can be set to 3*sig
    yq = y[q[0]]      
    qok = len(q[0]) > 0
-
    if ( (len(Ypositions) > 1) & qok ):
       # TWO PEAKS
       # double gaussian fit: remove the first peak from the data and fit the residual 
@@ -4546,6 +4589,19 @@ def get_components(xpos,ori_img,Ypositions,wheelpos,chatter=0,caldefault=False,\
       print("Error in get_components Ypositions not 1,2,or 3")
       return Yout
       
+def obsid2motion(obsid, file_path):
+    ''' By Zexi
+    to obtain motion (pixels) from a precreated motion table
+    '''
+    import pandas as pd
+    data=pd.read_csv(file_path,sep=' ',header=0)
+    data['OBS_ID']=data['OBS_ID'].astype(str)
+    data['OBS_ID']='000'+data['OBS_ID']
+    d = data.set_index(['OBS_ID'])
+    motion_v = d.loc[obsid]['MOTION_V']
+    motion_p = d.loc[obsid]['MOTION_P']
+    dict = {'V':motion_v, 'P':motion_p}
+    return dict
 
 def Fun1(p,y,x):
    '''compute the residuals for gaussian fit in get_components '''
@@ -4624,6 +4680,10 @@ def Fun3c(p,y,x,x0,sig0,x1,sig1,x2,sig2):
 def DFun3(p,y,x):
    a0, x0, sig0,a1,x1,sig1,a2,x2,sig2 = p
    return  -Dtrigaussian(x,a0,x0,sig0,a1,x1,sig1,a2,x2,sig2)
+
+def Fun4(p,y,x,motion0):
+   a0, x0, sig0 = p
+   return y - smeargaussian(x,a0,x0,sig0,motion0)
 
 def singlegaussian(x, a0, x0, sig0 ):
    '''
@@ -4705,6 +4765,29 @@ def DgaussPlusPoly(x, a0, x0, sig0, b, n=2):
    dfdb0 = (singlegaussian(x, a0, x0, sig0) ) *  2*b[2]*x 
    return (dfda0, dfdx0, dfdsig0, dfdb2, dfdb1,dfdb0)
 
+def smeargaussian(x, A, mu, sigma, motion, normalize=True):
+    t1, t2 = -motion/2, motion/2
+    m1, m2 = (t1-(x-mu))/(np.sqrt(2)*sigma), (t2-(x-mu))/(np.sqrt(2)*sigma)
+    n1, n2 = m1*m1, m2*m2
+    fifth = -(np.exp(-n2)-np.exp(-n1))
+    sixth = np.sqrt(np.pi/2)*(x-mu)/sigma*(erf(m2)-erf(m1))
+    forth = fifth + sixth
+    third = np.exp(np.power((x-mu)/sigma,2)/2)*2*np.power(sigma,2)*forth
+    secnd = -1/(2*np.power(sigma,2))*third
+    def first_f(t):
+        return np.exp(-np.power(t/sigma,2)/2+t*(x-mu)/np.power(sigma,2))
+    first = first_f(t2)-first_f(t1)
+    zeroth = np.power(sigma,2)/(x-mu)*(first - secnd)
+    if normalize == True:
+        norm = 1./(sigma*np.sqrt(2*np.pi))
+    else:
+        norm = 1.
+    #q = norm/motion*np.exp(-np.power((x-mu)/sigma,2)/2)*zeroth
+    q = np.exp(-np.power((x-mu)/sigma,2)/2)*zeroth
+    a1, a2 = t1/(np.sqrt(2)*sigma), t2/(np.sqrt(2)*sigma)
+    q_max = np.sqrt(np.pi/2)*sigma*(erf(a2)-erf(a1))
+    q = A*q/q_max
+    return q
 
 def pixdisFromWave(C_1,wave):
    ''' find the pixel distance from the given wavelengths for first order uv grism'''
