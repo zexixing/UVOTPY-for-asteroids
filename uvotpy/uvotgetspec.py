@@ -146,7 +146,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       wheelpos=None, interactive=interactive,  sumimage=None, set_maglimit=None,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True,
-      update_pnt=True, ifmotion=False, motion_file=None, anchor_offset=None
+      update_pnt=True, ifmotion=False, motion_file=None, 
       clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
