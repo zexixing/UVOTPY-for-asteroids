@@ -146,7 +146,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       wheelpos=None, interactive=interactive,  sumimage=None, set_maglimit=None,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True,
-      update_pnt=True, ifmotion=False, motion_file=None,
+      update_pnt=True, ifmotion=False, motion_file=None, anchor_offset=None
       clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
@@ -1235,7 +1235,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          #if not fit_second: nsubplots=3
          #   make plot of spectrum [figure 2]
          fig2 = plt.figure(2); plt.clf()
-         
+         plt.subplots_adjust(top=1,hspace=0, wspace=0)
          # image slice 
          ax21 = plt.subplot(nsubplots,1,1)
          ac = -ank_c[1]
@@ -1254,7 +1254,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          #if highlight: plt.contour(net,levels=levels,extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]))
          #  cross_section_plot: 
          cp2 = cp2/np.max(cp2)*100
-         plt.plot(ac+cp2+ank_c[1],np.arange(len(cp2)),'k',lw=2,alpha=0.6,ls='steps')
+         #plt.plot(ac+cp2+ank_c[1],np.arange(len(cp2)),'k',lw=2,alpha=0.6,ls='steps') #~TODO:
          # plot zeroth orders
          if not skip_field_src:
             pivot= np.array([ank_c[1],ank_c[0]-offset])
@@ -1270,7 +1270,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          plt.plot([ac+ank_c[1],ac+ank_c[1]],[0,200],'k',lw=2) 
          # plot position centre of orders  
          #if present0: plt.plot(ac+q0[0],y0[q0[0]],'k--',lw=1.2)
-         plt.plot(             ac+q1[0],y1[q1[0]],'k--',lw=1.2)
+         #plt.plot(             ac+q1[0],y1[q1[0]],'k--',lw=1.2)
          #if present2: plt.plot(ac+q2[0],y2[q2[0]],'k--',alpha=0.6,lw=1.2)
          #if present3: plt.plot(ac+q3[0],y3[q3[0]],'k--',alpha=0.3,lw=1.2)
          # plot borders slit region
@@ -1337,7 +1337,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             p4, = plt.plot(x[qbad],(sp_first-bg_first)[qbad],'xk',markersize=4)
             #p7, = plt.plot(x[q1[0]],(bg_first)[q1[0]],'r-',alpha=0.3,label='curve_bkg') 
             #    annotation
-            plt.legend([p3,p4,p7],['spectrum','suspect','background'],loc=0,)
+            #plt.legend([p3,p4,p7],['spectrum','suspect','background'],loc=0,)
+            plt.legend([p3,p7],['spectrum','background'],loc=0,)
             maxbg = np.max(bg_first[q1[0]][np.isfinite(bg_first[q1[0]])])
             topcnt = 1.2 * np.max([np.max(spnet[q1[0]]),maxbg, np.max((sp_first-bg_first)[q1[0]])])
             plt.ylim(np.max([ -20, np.min((sp_first-bg_first)[q1[0]])]), np.min([topcnt, maxcounts]))
@@ -1480,6 +1481,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                qf = 2e-12
             plt.ylim(0.001*qf,1.2*qf)
             plt.xlim(1600,6000)
+            plt.show()
 
          if optimal_extraction:   # no longer supported (2013-04-24)
             print("OPTIMAL EXTRACTION IS NO LONGER SUPPORTED")
@@ -1496,7 +1498,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                debug=False,chatter=1)
             p3, = plt.plot(wav1, flux1,'g',alpha=0.5,ls='steps',lw=2,label='optimal' )
             p4, = plt.plot(wav1,flux1,'k',alpha=0.5,ls='steps',lw=2,label='_nolegend_' )
-            plt.legend([p1,p2,p3],['curved','suspect','optimal'],loc=0,)
+            #plt.legend([p1,p2,p3],['curved','suspect','optimal'],loc=0,)
+            plt.legend([p1,p3],['curved','optimal'],loc=0,)
 
             qf = (flux1 > 0.) & (flux1 < 1.0e-11)
             plt.ylim( -0.01*np.max(flux1[qf]),  1.2*np.max(flux1[qf]) )
@@ -3599,6 +3602,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
        plt.ylabel('count rate per bin')
        plt.title(obsid)
        plt.savefig(indir+'/'+obsid+'_wing.png')
+       #plt.show()
        plt.close()
        if offsetset: 
            yof = offsetval - anky
@@ -3611,20 +3615,20 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                (p0,p1,p2), ier = leastsq(Fun4, (cp2.max(),anky,3.2), args=(cp2,arange(200),motion) ) #~FIXME:
            else:
                (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
-           p3= motion
-           sigma_mean=np.mean(polyval(sig1coef,x))
-           print(p0,p1,p2,p3,sigma_mean)
-           fig = plt.figure()
-           plt.plot(arange(200),cp2)
-           plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
-           plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
-           plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
-           plt.xlabel('y pixels')
-           plt.ylabel('total counts')
-           plt.title(obsid+' motion:'+"%.2f"%motion)
-           plt.savefig(indir+'/'+obsid+'_fit.png')
+           #p3= motion
+           #sigma_mean=np.mean(polyval(sig1coef,x))
+           #print(p0,p1,p2,p3,sigma_mean)
+           #fig = plt.figure()
+           #plt.plot(arange(200),cp2)
+           #plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
+           #plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+           #plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+           #plt.xlabel('y pixels')
+           #plt.ylabel('total counts')
+           #plt.title(obsid+' motion:'+"%.2f"%motion)
+           #plt.savefig(indir+'/'+obsid+'_fit.png')
            #plt.show()
-           plt.close()
+           #plt.close()
            yof = (p1-anky) 
            if chatter > 1:
                print("\n *** cross-spectrum gaussian fit parameters: ",p0,p1)
