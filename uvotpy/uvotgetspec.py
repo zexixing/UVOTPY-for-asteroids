@@ -105,7 +105,7 @@ if __name__ != '__main__':
    contour_on_img = False
    give_result = False # with this set, a call to getSpec returns all data 
    give_new_result = False
-   use_rectext = False
+   use_rectext = False 
    background_method = 'boxcar'  # alternatives 'splinefit' 'boxcar'
    background_smoothing = [50,7]   # 'boxcar' default smoothing in dispersion and across dispersion in pix
    background_interpolation = 'linear'
@@ -146,7 +146,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       wheelpos=None, interactive=interactive,  sumimage=None, set_maglimit=None,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True,
-      update_pnt=True, ifmotion=False, motion_file=None, 
+      update_pnt=True, ifmotion=False, motion_file=None, anchor_x_offset=False,
       clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
@@ -904,7 +904,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       # start with a quick straight slit extraction     
       exSpIm = extractSpecImg(specfile,ext,ankerimg,angle,spwid=spextwidth,
               background_lower=background_lower, background_upper=background_upper,
-              template = background_template, 
+              template = background_template, x_offset = anchor_x_offset,
               offsetlimit=offsetlimit,  chatter=chatter)              
       dis         = exSpIm['dis'] 
       spnet       = exSpIm['spnet'] 
@@ -1053,7 +1053,6 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
               y2,dlim2L,dlim2U,sig2coef,sp_second,co_second),(
               y3,dlim3L,dlim3U,sig3coef,sp_third,co_third),(
               x,xstart,xend,sp_all,quality,co_back)  = fitorder
-
       # update the anchor y-coordinate 
       if chatter > 3 : print ("DEBUG 1048  update anchor coordinate\noriginal ank_c=%s\ny1=%s"%(ank_c,y1))
       ank_c[0] = y1[np.int(ank_c[1])]         
@@ -1094,7 +1093,6 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              dropout_mask=dropout_mask, ifmotion=ifmotion,
              obsid=obsid,indir=indir,motion_file=motion_file,
              chatter=chatter) 
-             
       (present0,present1,present2,present3),(q0,q1,q2,q3), \
           (y0,dlim0L,dlim0U,sig0coef,sp_zeroth,co_zeroth),(
           y1,dlim1L,dlim1U,sig1coef,sp_first,co_first),\
@@ -1117,7 +1115,6 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                         
       ank_c[0] = y1[int(ank_c[1])]         
       Yout.update({"ank_c":ank_c,"extimg":extimg,"expmap":expmap})              
-         
       msg += "orders present:"
       if present0: msg += "0th order, "
       if present1: msg += "first order"
@@ -1481,7 +1478,6 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                qf = 2e-12
             plt.ylim(0.001*qf,1.2*qf)
             plt.xlim(1600,6000)
-            plt.show()
 
          if optimal_extraction:   # no longer supported (2013-04-24)
             print("OPTIMAL EXTRACTION IS NO LONGER SUPPORTED")
@@ -1558,6 +1554,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          '''
          plt.xlabel(u'$\lambda(\AA)$',fontsize=16)
          plt.savefig(indir+'/'+obsid+'_flux.png')
+      plt.show()
       
    # output parameter 
    Y1 = ( (dis,spnet,angle,anker,anker2,anker_field,ank_c), (bg,bg1,bg2,extimg,spimg,spnetimg,offset), 
@@ -1643,7 +1640,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
         searchwidth=35,spwid=13,offsetlimit=None, fixoffset=None, 
         background_lower=[None,None], background_upper=[None,None],
-        template=None,
+        template=None, x_offset = False,
         clobber=True,chatter=2):
    '''
    extract the grism image of spectral orders plus background
@@ -1778,7 +1775,11 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       c = b[e2-100:e2+100,:]
       if Tmpl: c_ = b_[e2-100:e2+100,:]
       if dropouts: aanan = aanan[e2-100:e2+100,:]
-      ank_c = [ (c.shape[0]-1)/2+1, (c.shape[1]-1)/2+1 , 0, c.shape[1]]
+      ank_c = [ (c.shape[0]-1)/2+1, (c.shape[1]-1)/2+1 , 0, c.shape[1]] #~TODO:
+      if x_offset == False:
+         pass
+      else:
+         ank_c[1] += x_offset
       
    if use_rectext:
       # history: rectext is a fortran code that maintains proper density of quantity when 
@@ -3336,7 +3337,7 @@ def spec_curvature(wheelpos,anchor,order=1,):
    else:
       print('spec_curvature: illegal wheelpos value')
       raise (ValueError)   
-      
+
 def get_coi_box(wheelpos):
     # provide half-width, length coi-box and factor 
     #  typical angle spectrum varies with wheelpos
@@ -3391,7 +3392,6 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
    from numpy import array,arange,where, zeros,ones, asarray, abs, int
    from uvotplot import plot_ellipsoid_regions
    import uvotmisc
-   
    anky,ankx,xstart,xend = ank_c
    xstart -= ankx
    xend   -= ankx
@@ -3432,6 +3432,9 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
      coef1 = get_1stOrderFit(xin=anchor2[0],yin=anchor2[1],curvedata=curves)
    else:  
      coef1 = spec_curvature(wheelpos,anchor2,order=1)
+   #coef1[0] = -3.08e-9
+   #coef1[1] = 5.89e-6
+   #coef1[2] = -9.21e-3
    dlim1L=-400
    dlim1U=1150
    present1=True
@@ -3723,8 +3726,8 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
               y3,dlim3L,dlim3U,sig3coef,sp_third,co_third  ),(
               x,xstart,xend,sp_all,quality,co_back)  = fitorder2
               
-          # update the anchor y-coordinate            
-          ank_c[0] = y1[ank_c[1]]             
+          # update the anchor y-coordinate           
+          ank_c[0] = y1[int(ank_c[1])]             
         #except:
         #  msg += "WARNING: fit order curvature update has failed\n"
         #  curved = "curve"
