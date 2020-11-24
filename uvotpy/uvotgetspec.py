@@ -145,7 +145,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       lfilt1=None, lfilt1_ext=None, lfilt2=None, lfilt2_ext=None,  
       wheelpos=None, interactive=interactive,  sumimage=None, set_maglimit=None,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
-      uvotgraspcorr_on=True,
+      uvotgraspcorr_on=True, ank_c_0offset = False,
       update_pnt=True, ifmotion=False, motion_file=None, anchor_x_offset=False,
       clobber=False, chatter=1):
       
@@ -697,7 +697,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 
       # read the anchor and dispersion out of the wavecal file                
       anker, anker2, C_1, C_2, angle, calibdat, msg4 = getCalData(Xphi,Yphi,wheelpos, date1, \
-         calfile=calfile, chatter=chatter)    
+         calfile=calfile, chatter=chatter)   
          
       hdrr = pyfits.getheader(specfile,int(ext))
       if (hdrr['aspcorr'] == 'UNKNOWN') & (not lfiltpresent):
@@ -904,7 +904,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       # start with a quick straight slit extraction     
       exSpIm = extractSpecImg(specfile,ext,ankerimg,angle,spwid=spextwidth,
               background_lower=background_lower, background_upper=background_upper,
-              template = background_template, x_offset = anchor_x_offset,
+              template = background_template, x_offset = anchor_x_offset, ank_c_0offset=ank_c_0offset,
               offsetlimit=offsetlimit,  chatter=chatter)              
       dis         = exSpIm['dis'] 
       spnet       = exSpIm['spnet'] 
@@ -1045,6 +1045,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              C_1=C_1,C_2=C_2,dist12=dist12, 
              dropout_mask=dropout_mask, ifmotion=ifmotion,
              obsid=obsid,indir=indir,motion_file=motion_file,
+             ank_c_0offset=ank_c_0offset,
              chatter=chatter) 
          # fit_sigmas parameter needs passing 
       (present0,present1,present2,present3),(q0,q1,q2,q3), (
@@ -1092,6 +1093,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              fit_third=fit_second, C_1=C_1,C_2=C_2,dist12=dist12, 
              dropout_mask=dropout_mask, ifmotion=ifmotion,
              obsid=obsid,indir=indir,motion_file=motion_file,
+             ank_c_0offset=ank_c_0offset,
              chatter=chatter) 
       (present0,present1,present2,present3),(q0,q1,q2,q3), \
           (y0,dlim0L,dlim0U,sig0coef,sp_zeroth,co_zeroth),(
@@ -1640,7 +1642,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
         searchwidth=35,spwid=13,offsetlimit=None, fixoffset=None, 
         background_lower=[None,None], background_upper=[None,None],
-        template=None, x_offset = False,
+        template=None, x_offset = False, ank_c_0offset=False,
         clobber=True,chatter=2):
    '''
    extract the grism image of spectral orders plus background
@@ -1882,7 +1884,8 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
                     offset = float(input('Please give a value for the offset:  '))
    else: 
        offset = fixoffset       
-         
+   if ank_c_0offset == True:
+         offset = 0
    if chatter > 0: 
       print('offset used is : ', -offset)        
    
@@ -3356,7 +3359,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
     composite_fit=True, test=None, chatter=0, skip_field_sources=False,\
     predict_second_order=True, ZOpos=None,outfull=False, msg='',\
     fit_second=True,fit_third=True,C_1=None,C_2=None,dist12=None, ifmotion=True,\
-    dropout_mask=None,obsid=None,indir=None,motion_file=None):
+    dropout_mask=None,obsid=None,indir=None,motion_file=None,ank_c_0offset=False):
    '''This routine knows about the curvature of the spectra in the UV filters  
       can provide the coefficients of the tracks of the orders
       can provide a gaussian fit to the orders
@@ -3546,7 +3549,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
    y0 = zeros(nx)+anky - polyval(coef1,0)
    y1 = zeros(nx)+anky - polyval(coef1,0)
    y2 = zeros(nx)+anky - polyval(coef1,0) 
-   y3 = zeros(nx)+anky - polyval(coef1,0)   
+   y3 = zeros(nx)+anky - polyval(coef1,0) 
    q0 = where((x >= dlim0L) & (x <= dlim0U))
    x0 = x[q0]
    if present0:  y0[q0] += polyval(coef0,x[q0])
@@ -3633,6 +3636,8 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
            #plt.show()
            #plt.close()
            yof = (p1-anky) 
+           if ank_c_0offset == True:
+              yof = 0
            if chatter > 1:
                print("\n *** cross-spectrum gaussian fit parameters: ",p0,p1)
                print("the first anchor fit with gaussian peaks at %5.1f, and the Y correction\nis %5.1f (may not be used)" % (p1,yof))
@@ -3657,7 +3662,6 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
       y1 += yof
       y2 += yof
       y3 += yof
-
 
    if not set_qual:
       map = None
