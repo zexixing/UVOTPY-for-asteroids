@@ -147,6 +147,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True, ank_c_0offset = False,
       update_pnt=True, ifmotion=False, motion_file=None, anchor_x_offset=False,
+      replace=None,
       clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
@@ -905,7 +906,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       exSpIm = extractSpecImg(specfile,ext,ankerimg,angle,spwid=spextwidth,
               background_lower=background_lower, background_upper=background_upper,
               template = background_template, x_offset = anchor_x_offset, ank_c_0offset=ank_c_0offset,
-              offsetlimit=offsetlimit,  chatter=chatter)              
+              offsetlimit=offsetlimit, replace=replace, chatter=chatter)              
       dis         = exSpIm['dis'] 
       spnet       = exSpIm['spnet'] 
       bg          = exSpIm['bg']
@@ -925,7 +926,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          Yout.update({"template":exSpIm["template_extimg"]})
       if exSpIm['dropouts']: 
          dropout_mask = exSpIm['dropout_mask']
-      else: dropout_mask = None  
+      else: dropout_mask = None 
          
       Yout.update({"background_1":bg1,"background_2":bg2})
       #msg += "1st order anchor offset from spectrum = %7.1f\n"%(offset)
@@ -951,6 +952,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 
       # get grism det image 
       img = pyfits.getdata(specfile, ext)
+      if isinstance(replace,np.ndarray):
+         img = replace
 
       try:
          offset = np.asscalar(offset)
@@ -1424,6 +1427,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             plt.xlabel(u'pixel distance from anchor position')
       '''
       plt.savefig(indir+'/'+obsid+'_count.png')
+      #plt.show()
 
 
       if (plot_spec):
@@ -1556,7 +1560,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          '''
          plt.xlabel(u'$\lambda(\AA)$',fontsize=16)
          plt.savefig(indir+'/'+obsid+'_flux.png')
-      plt.show()
+      # to plot the three figures
+      #plt.show()
       
    # output parameter 
    Y1 = ( (dis,spnet,angle,anker,anker2,anker_field,ank_c), (bg,bg1,bg2,extimg,spimg,spnetimg,offset), 
@@ -1642,7 +1647,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
         searchwidth=35,spwid=13,offsetlimit=None, fixoffset=None, 
         background_lower=[None,None], background_upper=[None,None],
-        template=None, x_offset = False, ank_c_0offset=False,
+        template=None, x_offset = False, ank_c_0offset=False, replace=None,
         clobber=True,chatter=2):
    '''
    extract the grism image of spectral orders plus background
@@ -1708,6 +1713,8 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       print(searchwidth,chatter,spwid,offsetlimit)
 
    img, hdr = pyfits.getdata(file,ext,header=True)
+   if isinstance(replace,np.ndarray):
+      img = replace
    # wcs_ = wcs.WCS(header=hdr,)  # detector coordinates DETX,DETY in mm   
    # wcsS = wcs.WCS(header=hdr,key='S',relax=True,)  # TAN-SIP coordinate type  
    if Tmpl:
