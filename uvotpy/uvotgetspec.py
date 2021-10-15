@@ -49,7 +49,7 @@ __version__ = '2.9.0 20171209'
 import sys
 import optparse
 import numpy as np
-import pylab as plt
+import matplotlib.pyplot as plt
 try: 
    from astropy.io import fits as pyfits
    from astropy import wcs
@@ -1197,6 +1197,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
    else: 
       if type(Y7) != typeNone: msg = Y7
       EffArea2 = None   
+   
    # note that the output differs depending on parameters given, i.e., arf, anchor
    Yout.update({"effarea1":EffArea1,"effarea2":EffArea2})   
    
@@ -1228,8 +1229,9 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          else:
             plt.xlim(0,2000)
             plt.ylim(0,2000)
-      plt.savefig(indir+'/'+obsid+'_map.png')
+      plt.savefig(indir+'/'+obsid+'_map.png',dpi=150)
       #plt.show()
+      plt.close()
 
       if (plot_raw):
          plt.winter()
@@ -1256,7 +1258,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          #if highlight: plt.contour(net,levels=levels,extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]))
          #  cross_section_plot: 
          cp2 = cp2/np.max(cp2)*100
-         #plt.plot(ac+cp2+ank_c[1],np.arange(len(cp2)),'k',lw=2,alpha=0.6,ls='steps') #~TODO:
+         #plt.plot(ac+cp2+ank_c[1],np.arange(len(cp2)),'k',lw=2,alpha=0.6,ds='steps') #~TODO:
          # plot zeroth orders
          if not skip_field_src:
             pivot= np.array([ank_c[1],ank_c[0]-offset])
@@ -1324,16 +1326,16 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          plt.rcParams['legend.fontsize'] = 'small'
          if curved == 'straight':
             p1, = plt.plot( dis[ank_c[2]:ank_c[3]], spnet[ank_c[2]:ank_c[3]],'k',
-                      ls='steps',lw=0.5,alpha=0.5,label='straight')
+                      ds='steps',lw=0.5,alpha=0.5,label='straight')
             p2, = plt.plot( dis[ank_c[2]:ank_c[3]], 
                       spextwidth*(bg1[ank_c[2]:ank_c[3]]+bg2[ank_c[2]:ank_c[3]])*0.5, 
                       'b',alpha=0.5,label='background')
             plt.legend([p1,p2],['straight','background'],loc=0,)
          
          if curved != "straight":
-            p3, = plt.plot(x[q1[0]],(sp_first-bg_first)[q1[0]],'r',ls='steps',label='spectrum')             
-            plt.plot(x[q1[0]],(sp_first-bg_first)[q1[0]],'k',alpha=0.2,ls='steps',label='_nolegend_')       
-            p7, = plt.plot(x[q1[0]], bg_first[q1[0]],'y',alpha=0.5,lw=1.1,ls='steps',label='background') 
+            p3, = plt.plot(x[q1[0]],(sp_first-bg_first)[q1[0]],'r',ds='steps',label='spectrum')             
+            plt.plot(x[q1[0]],(sp_first-bg_first)[q1[0]],'k',alpha=0.2,ds='steps',label='_nolegend_')       
+            p7, = plt.plot(x[q1[0]], bg_first[q1[0]],'y',alpha=0.5,lw=1.1,ds='steps',label='background') 
             #    bad pixels:        
             qbad = np.where(quality[q1[0]] > 0)
             p4, = plt.plot(x[qbad],(sp_first-bg_first)[qbad],'xk',markersize=4)
@@ -1345,9 +1347,9 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             topcnt = 1.2 * np.max([np.max(spnet[q1[0]]),maxbg, np.max((sp_first-bg_first)[q1[0]])])
             plt.ylim(np.max([ -20, np.min((sp_first-bg_first)[q1[0]])]), np.min([topcnt, maxcounts]))
          if optimal_extraction:
-            p5, = plt.plot(x[q1[0]],counts[1,q1[0]],'g',alpha=0.5,ls='steps',lw=1.2,label='optimal' )
-            p6, = plt.plot(x[q1[0]],counts[1,q1[0]],'k',alpha=0.5,ls='steps',lw=1.2,label='_nolegend_' )
-            p7, = plt.plot(x[q1[0]], bg_first[q1[0]],'y',alpha=0.7,lw=1.1,ls='steps',label='background')            
+            p5, = plt.plot(x[q1[0]],counts[1,q1[0]],'g',alpha=0.5,ds='steps',lw=1.2,label='optimal' )
+            p6, = plt.plot(x[q1[0]],counts[1,q1[0]],'k',alpha=0.5,ds='steps',lw=1.2,label='_nolegend_' )
+            p7, = plt.plot(x[q1[0]], bg_first[q1[0]],'y',alpha=0.7,lw=1.1,ds='steps',label='background')            
             plt.legend([p3,p5,p7],['spectrum','optimal','background'],loc=0,)
             topcnt = 1.2 * np.max((sp_first-bg_first)[q1[0]])       
             ylim1,ylim2 = -10,  np.min([topcnt, maxcounts])
@@ -1373,13 +1375,13 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                   np.min([np.max((sp_second-bg_second)[q2[0]]), maxcounts]))
             plt.xlim(ank_c[2]-ank_c[1],ank_c[3]-ank_c[1])
             if optimal_extraction:
-               p3, = plt.plot(x[q2[0]],counts[2,q2[0]],'g',alpha=0.5,ls='steps',label='optimal' )
+               p3, = plt.plot(x[q2[0]],counts[2,q2[0]],'g',alpha=0.5,ds='steps',label='optimal' )
                plt.legend((p1,p7,p2,p3),('spectrum','background','suspect','optimal',),loc=2)
                #plt.ylim(np.max([ -10,np.min(counts[2,q2[0]]), np.min((sp_second-bg_second)[q2[0]])]),\
                #   np.min([np.max(counts[2,q2[0]]), np.max((sp_second-bg_second)[q2[0]]), maxcounts]))
                plt.ylim( ylim1,ylim2 )
          if predict2nd :
-               p4, = plt.plot(dis2p+dist12,flux2p, ls='steps',label='predicted')
+               p4, = plt.plot(dis2p+dist12,flux2p, ds='steps',label='predicted')
                p5, = plt.plot(dis2p[np.where(qual2p != 0)]+dist12,flux2p[np.where(qual2p != 0)],'+k',label='suspect',markersize=4)         
                if optimal_extraction & fit_second:
                   plt.legend((p1,p2,p3,p4,p5),('curved','suspect','optimal','predicted','suspect'),loc=2)
@@ -1416,7 +1418,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                plt.ylim(np.max([ -100, np.min((sp_second-bg_second)[q3[0]])]),\
                   np.min([np.max((sp_third-bg_third)[q3[0]]), maxcounts]))
             if optimal_extraction:
-               p4, = plt.plot(x[q3[0]],counts[3,q3[0]],'b',alpha=0.5,ls='steps',label='optimal' )
+               p4, = plt.plot(x[q3[0]],counts[3,q3[0]],'b',alpha=0.5,ds='steps',label='optimal' )
                plt.legend([p1,p3,p2,p4],['spectrum','background','suspect','optimal',],loc=2)
                #plt.ylim(np.max([ -100,np.min(counts[3,q3[0]]), np.min((sp_second-bg_second)[q3[0]])]),\
                #   np.min([np.max(counts[3,q3[0]]), np.max((sp_third-bg_third)[q3[0]]), maxcounts]))
@@ -1426,7 +1428,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             plt.ylabel(u'3rd order counts')
             plt.xlabel(u'pixel distance from anchor position')
       '''
-      plt.savefig(indir+'/'+obsid+'_count.png')
+      plt.savefig(indir+'/'+obsid+'_count.png',dpi=150)
       #plt.show()
 
 
@@ -1447,7 +1449,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                     /expospec[1,[q1[0]]]).flatten()
             bkgrate1 = ((bg_first)[q1[0]] * (2.5/trackwidth)
                     /expospec[1,[q1[0]]]).flatten()
-            print("computing flux for plot; frametime =",framtime)          
+            print("computing flux for plot; frametime =",framtime)      
             flux1,wav1,coi_valid1 = rate2flux(wav1,rate1, wheelpos, 
                         bkgrate=bkgrate1, 
                         co_sprate = (co_first[q1[0]]/expospec[1,[q1[0]]]).flatten(),
@@ -1479,7 +1481,10 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                plt.legend([p1,p2],[u'curved',u'bad data'])
             plt.ylabel(u'1st order flux $(erg\ cm^{-2} s^{-1} \AA^{-1)}$')
             # find reasonable limits flux 
-            qf = np.max(flux1[int(len(wav1)*0.3):int(len(wav1)*0.7)])
+            get_flux_limit = flux1[int(len(wav1)*0.3):int(len(wav1)*0.7)]
+            get_flux_limit[get_flux_limit==np.inf] = np.nan
+            get_flux_limit[get_flux_limit==-np.inf]= np.nan
+            qf = np.nanmax(get_flux_limit)
             if qf > 2e-12: 
                qf = 2e-12
             plt.ylim(0.001*qf,1.2*qf)
@@ -1498,8 +1503,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                anker=anker, #option=1, fudgespec=1.32,
                frametime=framtime, 
                debug=False,chatter=1)
-            p3, = plt.plot(wav1, flux1,'g',alpha=0.5,ls='steps',lw=2,label='optimal' )
-            p4, = plt.plot(wav1,flux1,'k',alpha=0.5,ls='steps',lw=2,label='_nolegend_' )
+            p3, = plt.plot(wav1, flux1,'g',alpha=0.5,ds='steps',lw=2,label='optimal' )
+            p4, = plt.plot(wav1,flux1,'k',alpha=0.5,ds='steps',lw=2,label='_nolegend_' )
             #plt.legend([p1,p2,p3],['curved','suspect','optimal'],loc=0,)
             plt.legend([p1,p3],['curved','optimal'],loc=0,)
 
@@ -1559,7 +1564,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          #
          '''
          plt.xlabel(u'$\lambda(\AA)$',fontsize=16)
-         plt.savefig(indir+'/'+obsid+'_flux.png')
+         plt.savefig(indir+'/'+obsid+'_flux.png',dpi=150)
       # to plot the three figures
       #plt.show()
       
@@ -2206,7 +2211,7 @@ def findBackground(extimg,background_lower=[None,None], background_upper=[None,N
          sys.stderr.write( "BACKGROUND METHOD: %s;  background smoothing = %s\n"%
              (background_method,background_smoothing))
       else:
-         sys.stderr.write( "BACKGROUND METHOD:%s\n"(background_method ))
+         sys.stderr.write( "BACKGROUND METHOD:%s\n"%(background_method ))
       
    if not ((background_method == 'splinefit') | (background_method == 'boxcar') ):
       sys.stderr.write('background method missing; currently reads : %s\n'%(background_method))
@@ -3478,6 +3483,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
    # if wheelpos == 160: 
    sig0coef=array([4.7])
    sig1coef=array([-8.22e-09, 6.773e-04, 3.338])
+   #sig1coef=array([1.6*(-8.22e-09), 1.6*(6.773e-04), 1.6*3.338]) #~FIXME: try changing sigma
    #sig1coef=array([ 3.0])
    sig2coef=array([-5.44e-07, 2.132e-03, 3.662])
    sig3coef=array([0.0059,1.5])
@@ -3629,19 +3635,28 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
            else:
                (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
            #p3= motion
-           #sigma_mean=np.mean(polyval(sig1coef,x))
+           sigma_mean=np.mean(polyval(sig1coef,x))
            #print(p0,p1,p2,p3,sigma_mean)
-           #fig = plt.figure()
-           #plt.plot(arange(200),cp2)
-           #plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
-           #plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
-           #plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
-           #plt.xlabel('y pixels')
-           #plt.ylabel('total counts')
-           #plt.title(obsid+' motion:'+"%.2f"%motion)
-           #plt.savefig(indir+'/'+obsid+'_fit.png')
+           fig = plt.figure()
+           if ifmotion:
+               plt.plot(arange(200),cp2)
+               plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
+               plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+               plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
+               plt.xlabel('y pixels')
+               plt.ylabel('total counts')
+               plt.title(obsid+' motion:'+"%.2f"%motion)
+           else:
+               plt.plot(arange(200),cp2)
+               plt.plot(arange(200),singlegaussian(arange(200),p0,p1,sigma_mean))
+               plt.vlines(p1-(trackwidth *sigma_mean),0,np.max(cp2),color='k')
+               plt.vlines(p1+(trackwidth *sigma_mean),0,np.max(cp2),color='k')
+               plt.xlabel('y pixels')
+               plt.ylabel('total counts')
+               plt.title(obsid)
+           plt.savefig(indir+'/'+obsid+'_fit.png')
            #plt.show()
-           #plt.close()
+           plt.close()
            yof = (p1-anky) 
            if ank_c_0offset == True:
               yof = 0
@@ -3787,7 +3802,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_zeroth[i] = bgimg[k1:k2,i].sum()
                borderup[0,i]   = k2
                borderdown[0,i] = k1
-               apercorr[0,i] = x_aperture_correction(k1,k2,sig0coef,x[i],norder=0)
+               apercorr[0,i] = x_aperture_correction(k1,k2,sig0coef,x[i],norder=0,wheelpos=wheelpos)
                if len(expmap) == 1: expospec[0,i] = expmap[0]
                else: expospec[0,i] = expmap[k1:k2,i].mean()
       
@@ -3818,10 +3833,10 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                borderdown[1,i] = k1
                if ifmotion:
                    apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,mode='gaussian',
-                                                         sigma=polyval(sig1coef,x[i]),motion=motion,ifmotion=ifmotion)
+                                                         sigma=polyval(sig1coef,x[i]),motion=motion,ifmotion=ifmotion,wheelpos=wheelpos)
                #    apercorr[1,i] = apercorr_value
                else:
-                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1)
+                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,wheelpos=wheelpos)
                if len(expmap) == 1: expospec[1,i] = expmap[0]
                else:  expospec[1,i] = expmap[k1:k2,i].mean()
                if dropout_mask != None:
@@ -3856,7 +3871,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_second[i] = bgimg[k1:k2,i].sum()
                borderup[2,i]   = k2
                borderdown[2,i] = k1
-               apercorr[2,i] = x_aperture_correction(k1,k2,sig2coef,x[i],norder=2)
+               apercorr[2,i] = x_aperture_correction(k1,k2,sig2coef,x[i],norder=2,wheelpos=wheelpos)
                if len(expmap) == 1: expospec[2,i] = expmap[0]
                else:  expospec[2,i] = expmap[k1:k2,i].mean()
 
@@ -3880,7 +3895,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_third[i] = bgimg[k1:k2,i].sum(axis=0)
                borderup[3,i]   = k2
                borderdown[3,i] = k1
-               apercorr[3,i] = x_aperture_correction(k1,k2,sig3coef,x[i],norder=3)
+               apercorr[3,i] = x_aperture_correction(k1,k2,sig3coef,x[i],norder=3,wheelpos=wheelpos)
                if len(expmap) == 1: expospec[3,i] = expmap[0]
                else: expospec[3,i] = expmap[k1:k2,i].mean()
 
@@ -4049,9 +4064,7 @@ def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wh
    if norder == 0:       
       apercorr = 1.0/uvotmisc.GaussianHalfIntegralFraction( 0.5*(k2-k1)/np.polyval(sigcoef,x) )
    if norder == 1:  
-      # low coi apertures (normalised to 1 at aperture with half-width 2.5 sigma
-
-      # low coi apertures (normalised to 1 at aperture with half-width 2.5 sigma
+      # low coi apertures (normalised to 1 at aperture with half-width 2.5 sigma)
       # fitted polynomials to the aperture (low-coi) 
       #for 0<aperture<6 sig
       polycoef160 = np.array([  1.32112392e-03,  -2.69269447e-02,   2.10636905e-01,
@@ -4109,19 +4122,21 @@ def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wh
       elif (wheelpos != None):
           # low coi for wheelpos = 160,200; medium coi for wheelpos = 955, 1000
           if wheelpos == 160:
-              if (type(coi) == typeNone) | (coi < 0.1) :
+              if (type(coi) == typeNone) or (coi < 0.1) :
                  apercf1 = interp1d(aper_160_low['sig'],aper_160_low['ape'],)
                  apercorr = renormal / apercf1(xx)         
           if wheelpos == 200:
-              if (type(coi) == typeNone) | (coi < 0.1) :
+              if (type(coi) == typeNone) or (coi < 0.1) :
                  apercf2 = interp1d(aper_200_low['sig'],aper_200_low['ape'],) 
                  apercorr = renormal / apercf2(xx)         
           if wheelpos == 955:
-              if (type(coi) == typeNone) | (coi < 0.1) :
+              if (type(coi) == typeNone) or (coi < 0.1) :
                  apercf3 = interp1d(aper_955_med['sig'],aper_955_med['ape'],)
-                 apercorr = renormal / apercf3(xx)          
+                 apercorr = renormal / apercf3(xx)    
+                 #apercf3 = interp1d([0,6],[0,1],fill_value=(0,1),bounds_error=False)   
+                 #apercorr = 1.0/apercf3(xx) # change psf to test if there is apercorr before coi-corr
           if wheelpos == 1000:
-              if (type(coi) == typeNone) | (coi < 0.1) :
+              if (type(coi) == typeNone) or (coi < 0.1) :
                  apercf4 = interp1d(aper_1000_low['sig'],aper_1000_low['ape'],)
                  apercorr = renormal / apercf4(xx)                       
       else: 
@@ -8401,8 +8416,8 @@ def sum_PHAspectra(phafiles, wave_shifts=[], exclude_wave=[],
                   ax1.set_xlabel('wavelength in $\AA$')
                   
                   ax2 = fig.add_subplot(2,1,2)
-                  ax2.plot(W[q],FL[q],ls='steps',label='QUALITY FLAG')
-                  if do_COI: ax2.plot(W[q],COI[q],ls='steps',label='COI-FACTOR')
+                  ax2.plot(W[q],FL[q],ds='steps',label='QUALITY FLAG')
+                  if do_COI: ax2.plot(W[q],COI[q],ds='steps',label='COI-FACTOR')
                   ax2.legend(loc=0)
                   ax2.set_xlabel('wavelength in $\AA$')
                   
@@ -8491,10 +8506,10 @@ def sum_PHAspectra(phafiles, wave_shifts=[], exclude_wave=[],
                while OK: 
                   fig1.clf()
                   ax = fig1.add_subplot(111)
-                  ax.plot(refW[q],refF[q],'k',lw=1.5,ls='steps',label='wavelength reference')     
+                  ax.plot(refW[q],refF[q],'k',lw=1.5,ds='steps',label='wavelength reference')     
                   ax.fill_between(refW[q],(refF-refE)[q],(refF+refE)[q],color='k',alpha=0.1) 
                   
-                  ax.plot(W[p]+sh,F[p],'b',ls='steps',label='spectrum to shift')          
+                  ax.plot(W[p]+sh,F[p],'b',ds='steps',label='spectrum to shift')          
                   ax.fill_between(W[p]+sh,(F-E)[p],(F+E)[p],color='b',alpha=0.1)
                   
                   ax.plot(W[p],F[p],'r--',alpha=0.6,lw=1.5,label='original unshifted spectrum')                           
@@ -8671,7 +8686,7 @@ def oldcoi_func(pixno,wave,countrate,bkgrate,sig1coef=[3.2],option=1,
    specfactor = fudgespec*314.26/(2.*sigma1*2.5)           # aperture correction was assumed done on the input rate to be consistent with the 2.5 sigma Eff. Area
    # coi-area spectrum in limit (net = zero) must be background one, so same factor
    # Very high backgrounds deviate (Breeveld et al. 2010, fig 6; ccb=[+2.68,-2.68,-3.3,+3.3,0.995] matches plot)
-   
+
    # one pixel along the spectrum, 2 x sigma x trackwidth across, aperture corrected countrate (not bkgrate)
    # works for the lower count rates: total_cpf = boxcar( (countrate*fudgespec + bkgrate) * frametime  ,(coi_length,))
    if not background: 
@@ -8799,7 +8814,7 @@ def coi_func(pixno,wave,countrate,bkgrate,
    fudgespec=1.,
    coi_length=29,
    sig1coef=[],
-   trackwidth = 0., 
+   trackwidth = trackwidth,
    sigma1_limits=[2.6,4.0], 
    ccc = [], ccb = [], ca=[],cb=[],
    debug=False,

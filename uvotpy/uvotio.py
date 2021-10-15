@@ -257,7 +257,7 @@ def rate2flux(wave, rate, wheelpos,
             r = hdu.data['SPECRESP']
             ii = list(range(len(w)-1,-1,-1)) 
             r = r * fnorm(w)
-            specrespfunc = interpolate.interp1d( w[ii], r[ii], bounds_error=False, fill_value=np.NaN )
+            specrespfunc = interpolate.interp1d( w[ii], r[ii], bounds_error=False, fill_value=0)#np.NaN )
        else:  
             hdu  = effarea1
             w = 0.5*(hdu.data['WAVE_MIN']+hdu.data['WAVE_MAX'])    
@@ -358,6 +358,7 @@ def sensitivityCorrection(swifttime,wave=None,sens_rate=0.01,wheelpos=0):
        sens_corr = 1.0/(1.0 - sens_rate*(swifttime-126230400.000)/31556952.0 ) 
        if wave is not None and (wheelpos == 160):
           fscale =(swifttime-126230400.000) / (12.6*365.26*86400) #~~TODO: 
+          fscale = 1
           extracorr = np.array(
       [[1.650e+03, 0.19],
        [  1.68810484e+03,   1.93506494e-01],
@@ -388,7 +389,7 @@ def sensitivityCorrection(swifttime,wave=None,sens_rate=0.01,wheelpos=0):
           sens_corr=sens_corr/(f_extrasenscorr(wave) * fscale)
           print(fscale, sens_corr)
           print ("\nsensitivityCorrection: applied additional changes in UV 1700-3000\n")
-       return sens_corr
+       return sens_corr*wave/wave
    else: 
        return 1.0
 
@@ -2220,9 +2221,9 @@ def writeSpectrum(ra,dec,filestub,ext, Y, fileoutstub=None,
       
          xspec_qual2 = qual2
          xspec_qual2[xspec_qual2 > 1] = np.array(np.log2(xspec_qual2[xspec_qual2 > 1]),dtype=int)
-      
          # collect data for output
          if fileversion == 1:
+            sp2counts[np.where(sp2counts<0)] = 0 #~TODO:
             spectrum_second = (channel2, sp2counts[rc2], 
               (np.sqrt(sp2counts))[rc2], xspec_qual2[rc2], 
               aper2corr[rc2], expospec2[rc2] )
@@ -2601,7 +2602,7 @@ def writeSpectrum_ (ra,dec,obsid,ext,hdr,anker,phx,phy,offset, ank_c, exposure,
       if fileversion == 1:
           cols2 = fits.ColDefs([col20,col21,col22,col23,col24A,col24B,col25,col26,col27,col28,
                    col29,col29A,col29B,col29C,col29D,col29E,col29F,col29G,col30,col31,col32,col33,col34,col35,col36,
-                   col37,col38,col38A,col38C,col38D,col38E])      
+                   col37,col38,col38A,col38C,col38D,col38E]) 
       elif fileversion == 2:
           if calmode:
               colcoA =fits.Column(name='COSP1RAT',format='E',array=co_sp1rate,unit='c/s')
@@ -2615,8 +2616,8 @@ def writeSpectrum_ (ra,dec,obsid,ext,hdr,anker,phx,phy,offset, ank_c, exposure,
                    col37,col38A,col38B,col24A,col24B])
    else: # not present2
       if fileversion == 1:  
-          cols2 = fits.ColDefs([col20,col21,col22,col24A,col24B,col25,col26,col27,
-                  col28,col29,col29A,col29B,col29C,col29D,col29E]) 
+          cols2 = fits.ColDefs([col20,col21,col22,col23,col24A,col24B,col25,col26,col27,
+                  col28,col29,col29A,col29B,col29C,col29D,col29E,col29F,col29G]) 
       elif fileversion == 2:
           if calmode:
               colcoA =fits.Column(name='COSP1RAT',format='E',array=co_sp1rate,unit='c/s')
@@ -2626,7 +2627,6 @@ def writeSpectrum_ (ra,dec,obsid,ext,hdr,anker,phx,phy,offset, ank_c, exposure,
           else:
               cols2 = fits.ColDefs([col20,col21,col22,col23,col25,col26,col27,
                   col28,col29,col29A,col29B,col24A,col24B])
-      
    tbhdu2 = fits.BinTableHDU.from_columns(cols2)
    if fileversion == 1:
        tbhdu2.header['HISTORY']='coi-loss, aperture - corrected flux and rates'
