@@ -117,7 +117,7 @@ if __name__ != '__main__':
    background_source_mag = 18.0
    zeroth_blim_offset = 1.0
    coi_half_width = None
-   slit_with = 200
+   slit_width = 200
    _PROFILE_BACKGROUND_ = False # start with severe sigma-clip f background, before going to smoothing 
        
 today_ = datetime.date.today()   
@@ -757,9 +757,9 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       # determine x,y locations of certain wavelengths on the image
       # TBD: add curvature
       if wheelpos < 500: 
-         wavpnt = np.arange(1700,6800,200)
+         wavpnt = np.arange(1700,6800,slit_width)
       else:
-         wavpnt = np.arange(2500,6600,200)   
+         wavpnt = np.arange(2500,6600,slit_width)   
       dispnt=pixdisFromWave(C_1,wavpnt) # pixel distance to anchor
    
       if chatter > 0: msg2 += 'first order angle at anchor point: = %7.1f\n'%(angle)        
@@ -799,12 +799,12 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
    # provide some checks on background inputs:
    if background_lower[0] != None:
       background_lower =  np.abs(background_lower)
-      if np.sum(background_lower) >= 190.0: 
+      if np.sum(background_lower) >= (slit_width-10): 
          background_lower = [None,None]
          msg += "WARNING: background_lower set too close to edge image\n          Using default\n"       
    if background_upper[0] != None:
       background_upper =  np.abs(background_upper)
-      if np.sum(background_upper) >= 190.0: 
+      if np.sum(background_upper) >= (slit_width-10): 
          background_upper = [None,None]
          msg += "WARNING: background_upper set too close to edge image\n          Using default\n"   
    
@@ -1164,7 +1164,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             msg += "SIGCOEF3_"+str(k)+"=%12.4e\n" % (sig3coef[k])
 
    if chatter > 3 : print ("DEBUG 1142 done spectral extraction, now calibrate")
-   offset = ank_c[0]-100.0                      
+   offset = ank_c[0]-slit_width/2                     
    msg += "best fit 1st order anchor offset from spectrum = %7.1f\n"%(offset)
    msg += "anchor position in rotated extracted spectrum (%6.1f,%6.1f)\n"%(ank_c[1],y1[int(ank_c[1])])
    msg += msg4
@@ -1285,7 +1285,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                      dims2,mlim,
                      img_angle=angle-180.0,ax=ax21)
          # plot line on anchor location 
-         plt.plot([ac+ank_c[1],ac+ank_c[1]],[0,200],'k',lw=2) 
+         plt.plot([ac+ank_c[1],ac+ank_c[1]],[0,slit_width],'k',lw=2) 
          # plot position centre of orders  
          #if present0: plt.plot(ac+q0[0],y0[q0[0]],'k--',lw=1.2)
          #plt.plot(             ac+q1[0],y1[q1[0]],'k--',lw=1.2)
@@ -1307,10 +1307,10 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          # plot limits background
          plt_bg = np.ones(len(q1[0]))
          if (background_lower[0] == None) & (background_upper[0] == None):
-            background_lower = [0,50] ; background_upper = [150,200] 
+            background_lower = [0,50] ; background_upper = [slit_width-50,slit_width] 
             plt.plot(ac+q1[0],plt_bg*(background_lower[1]),'-k',lw=1.5 ) 
             plt.plot(ac+q1[0],plt_bg*(background_upper[0]),'-k',lw=1.5 )
-         else:   
+         else: 
           if background_lower[0] != None:
             plt.plot(ac+q1[0],plt_bg*(y1[int(ank_c[1])]-background_lower[0]),'-k',lw=1.5 )
             plt.plot(ac+q1[0],plt_bg*(y1[int(ank_c[1])]-background_lower[1]),'-k',lw=1.5 ) 
@@ -1323,7 +1323,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             plt.plot(ac+q1[0],plt_bg*(background_upper[0]),'-k',lw=1.5 )
             
          # rescale, title   
-         plt.ylim(0,200)
+         plt.ylim(0,slit_width)
          #plt.ylim(50,150)
          if not zoom:
             xlim1 = ac+ank_c[2]
@@ -1800,9 +1800,9 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       if dropouts: #try to rotate the boolean image
          aanan = ndimage.rotate(aanan,theta,reshape = False,order = 1,mode = 'constant',)
       e2 = int(0.5*b.shape[0])
-      c = b[e2-100:e2+100,:]
-      if Tmpl: c_ = b_[e2-100:e2+100,:]
-      if dropouts: aanan = aanan[e2-100:e2+100,:]
+      c = b[e2-int(slit_width/2):e2+int(slit_width/2),:]
+      if Tmpl: c_ = b_[e2-int(slit_width/2):e2+int(slit_width/2),:]
+      if dropouts: aanan = aanan[e2-int(slit_width/2):e2+int(slit_width/2),:]
       ank_c = [ (c.shape[0]-1)/2+1, (c.shape[1]-1)/2+1 , 0, c.shape[1]] #~TODO:
       if x_offset == False:
          pass
@@ -1817,13 +1817,13 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       cosangle = np.cos(theta/180.*np.pi)
       sinangle = np.sin(theta/180.*np.pi)
       # distance anchor to pivot 
-      dx_ank = - (hdr['naxis1']-anker[0])/cosangle + 100.0*sinangle 
+      dx_ank = - (hdr['naxis1']-anker[0])/cosangle + slit_width/2*sinangle #~FIXME: I am not sure if this is "+ 100.*sinangle" or "+ slit_width/2*sinangle"
       if np.abs(dx_ank) > 760: dx_ank = 760   # include zeroth order (375 for just first order)
       # distance to end spectrum
-      dx_2   =                -anker[0] /cosangle + 100.0/sinangle  # to lhs edge
-      dy_2   =  (hdr['naxis2']-anker[1])/sinangle - 100.0/cosangle  # to top edge
+      dx_2   =                -anker[0] /cosangle + slit_width/2/sinangle  # to lhs edge #~FIXME: I am not sure if this is "+ 100.*sinangle" or "+ slit_width/2*sinangle"
+      dy_2   =  (hdr['naxis2']-anker[1])/sinangle - slit_width/2/cosangle  # to top edge #~FIXME: I am not sure if this is "+ 100.*sinangle" or "+ slit_width/2*sinangle"
       dx = int(dx_ank + np.array([dx_2,dy_2]).min() )   # length rotated spectrum 
-      dy = 200 # width rotated spectrum
+      dy = slit_width # width rotated spectrum
       # pivot x0,y0
       x0 = anker[0] - dx_ank*cosangle  + dy/2.*sinangle
       y0 = anker[1] - dx_ank*sinangle  - dy/2.*cosangle
@@ -1837,7 +1837,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       print(command)
       os.system(command)
       c = extimg = pyfits.getdata(outfile,0)
-      ank_c = np.array([100,dx_ank,0,extimg.shape[1]])
+      ank_c = np.array([int(slit_width/2),dx_ank,0,extimg.shape[1]])
       # out_of_img_val = 0.
       if clobber:
          os.system("rm "+outfile)
@@ -1852,7 +1852,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
    
    # first find parts not off the detector -> 'qofd'
    eps1 = 1e-15 # remainder after resampling for intel-MAC OSX system (could be jacked up)
-   qofd = np.where( abs(c[100,:] - cval) > eps1 )
+   qofd = np.where( abs(c[int(slit_width/2),:] - cval) > eps1 )
 
    # define constants for the spectrum in each mode
    if wheelpos < 300:   # UV grism
@@ -1880,7 +1880,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
 
    # y-position of anchor spectrum in strip image (allowed y (= [50,150], but search only in 
    #    range defined by searchwidth (default=35) )
-   y_default=100 # reference y
+   y_default=int(slit_width/2) # reference y
    if (type(offsetlimit) == list):
        if (len(offsetlimit)==2): 
        # sane y_default
@@ -1890,7 +1890,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
                raise IOError("parameter offsetlimit[0]=%i, must be in range [51,149]."+
                "\nIs the aspect correction right (in reference images)?"%(offsetlimit[0]))        
            if offsetlimit[1] < 1:
-               fixoffset = offsetlimit[0]-100
+               fixoffset = offsetlimit[0]-int(slit_width/2)
            else:  
                searchwidth=int(offsetlimit[1]+0.5)
 
@@ -1925,7 +1925,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
    
    # Straight slit extraction (most basic extraction, no curvature):
    sphalfwid = int(spwid-0.5)/2
-   splim1 = 100+offset-sphalfwid+1
+   splim1 = int(slit_width/2)+offset-sphalfwid+1
    splim2 = splim1 + spwid
    spimg  = c[int(splim1):int(splim2),:]
          
@@ -2044,7 +2044,7 @@ def background_profile(img, smo1=30, badval=None):
    
 
 
-def findBackground(extimg,background_lower=[None,None], background_upper=[None,None],yloc_spectrum=100, 
+def findBackground(extimg,background_lower=[None,None], background_upper=[None,None],yloc_spectrum=int(slit_width/2), 
     smo1=None, smo2=None, chatter=2):
    '''Extract the background from the image slice containing the spectrum.
    
@@ -2269,7 +2269,7 @@ def findBackground(extimg,background_lower=[None,None], background_upper=[None,N
       kx2 = np.min(np.where(img_good[ny-1,:]))+10  # assuming the spectrum is in the top two thirds of the detector
       kx3 = np.max(np.where(img_good[ny-1,:]))-10
    else:   
-      bg2_0= np.min(np.array([yloc_spectrum + sig1*background_upper[0],180 ]))
+      bg2_0= np.min(np.array([yloc_spectrum + sig1*background_upper[0],(slit_width-20) ]))
       #bg2_1=  np.min(np.array([yloc_spectrum + sig1*(background_upper[0]+background_upper[1]),ny]))
       bg2_1=  np.min(np.array([yloc_spectrum + sig1*(background_upper[1]),ny]))
       bg2 = bgimg[int(bg2_0):int(bg2_1),:].copy()
@@ -2376,7 +2376,7 @@ def findBackground(extimg,background_lower=[None,None], background_upper=[None,N
      # linear interpolation of the two background regions  
         dbgdy = (bg2-bg1)/(background_upper[0]+0.5*background_upper[1]+background_lower[0]+0.5*background_lower[1]) 
         for i9 in range(bgimg.shape[0]):
-           bgimg[i9,kx0:kx1] = bg1[kx0:kx1] + dbgdy[kx0:kx1]*(i9-int(100-(background_lower[0]+0.5*background_lower[1])))
+           bgimg[i9,kx0:kx1] = bg1[kx0:kx1] + dbgdy[kx0:kx1]*(i9-int(int(slit_width/2)-(background_lower[0]+0.5*background_lower[1])))
            bgimg[i9,0:kx0] =  bg2[0:kx0]    # assuming that the spectrum in not in the lower left corner 
            bgimg[i9,kx1:nx] = bg2[kx1:nx]
         if chatter > 2: print("4..BACKGROUND from BG1 and BG2")   
@@ -3614,9 +3614,9 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                offsetset = True
            else:           
                print('curved_extraction: offsetlimit=',offsetlimit,'  delpix=',delpix)
-       eo = int(anky-100)
+       eo = int(anky-slit_width/2)
        if set_offset: 
-           eo = int(offset-100)
+           eo = int(offset-slit_width/2)
        for q in q1[0]:
           if ((x[q] < 600) & (x[q] > -200) & (quality[q] == 0)):
             try:
@@ -3632,10 +3632,10 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
        plt.title(obsid)
        #plt.show()
        #print(np.sum(cp2_spimg[:,1632:1832],axis=1),len(np.sum(cp2_spimg[:,200:400],axis=1)))
-       plt.plot(arange(200),np.sum(cp2_spimg[:,1032:1232],axis=1)/expmap[0],label='-200-0/1032-1232')
-       plt.plot(arange(200),np.sum(cp2_spimg[:,1232:1432],axis=1)/expmap[0],label='0-200/1232-1432')
-       plt.plot(arange(200),np.sum(cp2_spimg[:,1432:1632],axis=1)/expmap[0],label='200-400/1432-1632')
-       plt.plot(arange(200),np.sum(cp2_spimg[:,1632:1832],axis=1)/expmap[0],label='400-600/1632-1832')
+       plt.plot(arange(slit_width),np.sum(cp2_spimg[:,1032:1232],axis=1)/expmap[0],label='-200-0/1032-1232')
+       plt.plot(arange(slit_width),np.sum(cp2_spimg[:,1232:1432],axis=1)/expmap[0],label='0-200/1232-1432')
+       plt.plot(arange(slit_width),np.sum(cp2_spimg[:,1432:1632],axis=1)/expmap[0],label='200-400/1432-1632')
+       plt.plot(arange(slit_width),np.sum(cp2_spimg[:,1632:1832],axis=1)/expmap[0],label='400-600/1632-1832')
        plt.legend()
        plt.ylabel('count rate per bin')
        plt.title(obsid)
@@ -3650,11 +3650,11 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
        else:
            if ifmotion:
                motion = abs(obsid2motion(obsid,motion_file)['V'])
-               (p0,p1,p2), ier = leastsq(Fun4, (cp2.max(),anky,3.2), args=(cp2,arange(200),motion) ) #~FIXME:
+               (p0,p1,p2), ier = leastsq(Fun4, (cp2.max(),anky,3.2), args=(cp2,arange(slit_width),motion) ) #~FIXME:
                sigma_mean=np.mean(polyval(sig1coef,x))
                #p3= motion
            elif fixwidth:
-               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(200)) )
+               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(slit_width)) )
                sigma_mean=fixwidth/trackwidth #np.mean(polyval(sig1coef,x))
                times = sigma_mean/np.mean(polyval(sig1coef,x))
                sig0coef = times*sig0coef
@@ -3662,7 +3662,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                sig2coef = times*sig2coef
                sig3coef = times*sig3coef
            elif ifextended:
-               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(200)) )
+               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(slit_width)) )
                sigma_mean = p2
                times = p2/np.mean(polyval(sig1coef,x))
                #times = 1.
@@ -3672,29 +3672,29 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                sig2coef = times*sig2coef
                sig3coef = times*sig3coef
            else:
-               (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
+               (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(slit_width),3.2) ) 
                sigma_mean=np.mean(polyval(sig1coef,x))
            #print(p0,p1,p2,p3,sigma_mean)
            fig = plt.figure()
            if ifmotion:
-               plt.plot(arange(200),cp2)
-               plt.plot(arange(200),smeargaussian(arange(200),p0,p1,sigma_mean,motion))
+               plt.plot(arange(slit_width),cp2)
+               plt.plot(arange(slit_width),smeargaussian(arange(slit_width),p0,p1,sigma_mean,motion))
                plt.vlines(p1-(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
                plt.vlines(p1+(trackwidth *sigma_mean+motion/2),0,np.max(cp2),color='k')
                plt.xlabel('y pixels')
                plt.ylabel('total counts')
                plt.title(obsid+' motion:'+"%.2f"%motion)
            elif fixwidth:
-               plt.plot(arange(200),cp2)
-               plt.plot(arange(200),singlegaussian(arange(200),p0,p1,p2))
+               plt.plot(arange(slit_width),cp2)
+               plt.plot(arange(slit_width),singlegaussian(arange(slit_width),p0,p1,p2))
                plt.vlines(p1-(trackwidth *sigma_mean),0,np.max(cp2),color='k')
                plt.vlines(p1+(trackwidth *sigma_mean),0,np.max(cp2),color='k')
                plt.xlabel('y pixels')
                plt.ylabel('total counts')
                plt.title(obsid)
            else:
-               plt.plot(arange(200),cp2)
-               plt.plot(arange(200),singlegaussian(arange(200),p0,p1,sigma_mean))
+               plt.plot(arange(slit_width),cp2)
+               plt.plot(arange(slit_width),singlegaussian(arange(slit_width),p0,p1,sigma_mean))
                plt.vlines(p1-(trackwidth *sigma_mean),0,np.max(cp2),color='k')
                plt.vlines(p1+(trackwidth *sigma_mean),0,np.max(cp2),color='k')
                plt.xlabel('y pixels')
@@ -3820,7 +3820,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
       # default single track extraction 
       sphalfwid = 4.*sig1coef[0]
       spwid = 2*sphalfwid
-      splim1 = int(100+offset-sphalfwid+1)
+      splim1 = int(slit_width/2+offset-sphalfwid+1)
       splim2 = int(splim1 + spwid)
       sp_all  = extimg[splim1:splim2,:].sum(axis=0).flatten()
       bg_all  = bgimg[splim1:splim2,:].sum(axis=0).flatten()
@@ -6873,7 +6873,7 @@ def splitspectrum(net,var,fitorder,wheelpos,anchor,C_1=None,C_2=None,dist12=None
             if chatter > 4: 
                print('get_initspectrum: i=%5i a1=%6.1f   a2=%6.1f  y1=%6.1f  y2=%6.1f ' % (i,a1,a2,y1[i],y2[i]))
          
-         yr   = arange( max([int(y1[i]-3.*sig1),0]) , min([int(y2[i]+3.*sig1),200]) ) # base 1 pixels
+         yr   = arange( max([int(y1[i]-3.*sig1),0]) , min([int(y2[i]+3.*sig1),slit_width]) ) # base 1 pixels
          ff1 = singlegaussian(yr,a1,y1[i],sig1)
          ff2 = singlegaussian(yr,a2,y2[i],sig2)  
          fft = ff1+ff2    # total
@@ -6906,7 +6906,7 @@ def splitspectrum(net,var,fitorder,wheelpos,anchor,C_1=None,C_2=None,dist12=None
          fractions [2,i] = frac2.sum()
          
          # optimal extraction order 1
-         yr1   = arange( max([0,int(y1[i]-sig1)]) , min([int(y1[i]+sig1),200]) ) # base 1 pixels
+         yr1   = arange( max([0,int(y1[i]-sig1)]) , min([int(y1[i]+sig1),slit_width]) ) # base 1 pixels
          Var = var[yr1,i] * varFudgeFactor
          ff1 = singlegaussian(yr1,a1,y1[i],sig1)
          ff2 = singlegaussian(yr1,a2,y2[i],sig2)  
@@ -6924,7 +6924,7 @@ def splitspectrum(net,var,fitorder,wheelpos,anchor,C_1=None,C_2=None,dist12=None
          count_opt[1,i] = var_opt[1,i] * ( P1[qfin] * net1[qfin] / V1[qfin] ).sum()
          newsigmas[1,i] = sig1
              
-         yr2   = arange( max([0,int(y2[i]-sig2)]) , min([int(y2[i]+sig2),200]) ) # base 1 pixels
+         yr2   = arange( max([0,int(y2[i]-sig2)]) , min([int(y2[i]+sig2),slit_width]) ) # base 1 pixels
          Var = var[yr2,i] * varFudgeFactor
          ff1 = singlegaussian(yr2,a1,y1[i],sig1)
          ff2 = singlegaussian(yr2,a2,y2[i],sig2)  
@@ -7293,7 +7293,7 @@ def updateFitorder(extimg, fitorder1, wheelpos, predict2nd=False, fit_second=Fal
 
       if len(fx0) > 0:
       # re-fit the zeroth order y-offset  (remove bad points ???)
-         fcoef0 = np.polyfit(np.array(fx0)[fx0q],np.array(fy0)[fx0q]-100.,2)
+         fcoef0 = np.polyfit(np.array(fx0)[fx0q],np.array(fy0)[fx0q]-slit_width/2,2)
          fsig0coef = np.polyfit(np.array(fx0)[fx0q],np.array(fsig0)[fx0q],2)
       else:
          if chatter > 1: print("updateFitorder: no success refitting zeroth order")
@@ -7557,34 +7557,34 @@ def updateFitorder(extimg, fitorder1, wheelpos, predict2nd=False, fit_second=Fal
    # re-fit the 1,2, 3 order y-offset  and fit background coefficients (remove bad points ???)
  
    if len(fx1) > 0:
-      fcoef1 = np.polyfit(array(fx1),array(fy1)-100.,3)
+      fcoef1 = np.polyfit(array(fx1),array(fy1)-slit_width/2,3)
       fsig1coef = np.polyfit(array(fx1),array(fsig1),3)
       fx4 = fx0
       for i in fx1: fx4.append(i)
       fbg0coef = np.polyfit(array(fx4),array(bg0),3)
       fbg1coef = np.polyfit(array(fx4),array(bg1),3)
-      y1[q1] = np.polyval(fcoef1,x[q1]) + 100.
+      y1[q1] = np.polyval(fcoef1,x[q1]) + slit_width/2
    else:
       fsig1coef = sig1coef    
  
    if fit_second & (len(fx2) > 0):
-      fcoef2 = np.polyfit(array(fx2),array(fy2)-100.,2)
+      fcoef2 = np.polyfit(array(fx2),array(fy2)-slit_width/2,2)
       fsig2coef = np.polyfit(array(fx2),array(fsig2),2)
-      y2[q2] = np.polyval(fcoef2,x[q2]) + 100.
+      y2[q2] = np.polyval(fcoef2,x[q2]) + slit_width/2
    else:
       fsig2coef = sig2coef    
       
    if fit_third & (len(fx3) > 0):   
-      fcoef3 = np.polyfit(array(fx3),array(fy3)-100.,1)
+      fcoef3 = np.polyfit(array(fx3),array(fy3)-slit_width/2,1)
       fsig3coef = np.polyfit(array(fx3),array(fsig3),1)
-      y3[q3] = np.polyval(fcoef3,x[q3]) + 100.
+      y3[q3] = np.polyval(fcoef3,x[q3]) + slit_width/2
    else:
       fsig3coef = sig3coef    
    
    values=(bg0,bg1),(fx0,fx1,fx2,fx3),(fy0,fy1,fy2,fy3),(fsig0,fsig1,fsig2,fsig3)
    errors=(e_bg0,e_bg1),(e_fx0,e_fx1,e_fx2,e_fx3),(e_fy0,e_fy1,e_fy2,e_fy3),(e_fsig0,e_fsig1,e_fsig2,e_fsig3)
    
-   y0[q0] = np.polyval(fcoef0,x[q0]) + 100.
+   y0[q0] = np.polyval(fcoef0,x[q0]) + slit_width/2
    #y1[q1] = np.polyval(fcoef1,x[q1]) + 100.
    #y2[q2] = np.polyval(fcoef2,x[q2]) + 100.
    #y3[q3] = np.polyval(fcoef3,x[q3]) + 100.
@@ -7954,16 +7954,16 @@ def sum_Extimage( pha_file_list, sum_file_name='extracted_image_sum.fit', mode='
             print('exposure   = ',expo)
             print('ankx was shifted by ',ysh[m],' pix')
 
-         if anky <= 100:
-            y0 = 100-anky     
-            y1 = 200
+         if anky <= int(slit_width/2):
+            y0 = int(slit_width/2)-anky     
+            y1 = int(slit_width)
             y2 = 0
-            y3 = 100+anky
+            y3 = int(slit_width/2)+anky
          else:
             y0 = 0
-            y1 = 300-anky
-            y2 = anky-100
-            y3 = 200
+            y1 = int(slit_width*3/2)-anky
+            y2 = anky-int(slit_width/2)
+            y3 = int(slit_width)
                 
          x0 = 0
          x2 = ankx-500
