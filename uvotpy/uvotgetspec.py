@@ -117,6 +117,7 @@ if __name__ != '__main__':
    background_source_mag = 18.0
    zeroth_blim_offset = 1.0
    coi_half_width = None
+   slit_with = 200
    _PROFILE_BACKGROUND_ = False # start with severe sigma-clip f background, before going to smoothing 
        
 today_ = datetime.date.today()   
@@ -147,7 +148,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       plot_img=True, plot_raw=True, plot_spec=True, zoom=True, highlight=False, 
       uvotgraspcorr_on=True, ank_c_0offset = False,
       update_pnt=True, ifmotion=False, motion_file=None, anchor_x_offset=False,
-      replace=None,
+      replace=None,ifextended=False, singleside_bkg = False, fixwidth = False,
       clobber=False, chatter=1):
       
    '''Makes all the necessary calls to reduce the data. 
@@ -880,6 +881,12 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       bg, bg1, bg2, bgsig, bgimg, bg_limits_used, bgextra = findBackground(extimg,
          background_lower=background_lower,
          background_upper=background_upper,)
+      if singleside_bkg == 'bg1':
+         bg2 = bg1
+      elif singleside_bkg == 'bg2':
+         bg1 = bg2
+      else:
+         pass
       skip_field_src = True
       spnet = bg1  # placeholder
       expo = exposure
@@ -906,7 +913,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       exSpIm = extractSpecImg(specfile,ext,ankerimg,angle,spwid=spextwidth,
               background_lower=background_lower, background_upper=background_upper,
               template = background_template, x_offset = anchor_x_offset, ank_c_0offset=ank_c_0offset,
-              offsetlimit=offsetlimit, replace=replace, chatter=chatter)              
+              offsetlimit=offsetlimit, replace=replace, chatter=chatter, singleside_bkg=singleside_bkg)              
       dis         = exSpIm['dis'] 
       spnet       = exSpIm['spnet'] 
       bg          = exSpIm['bg']
@@ -1049,7 +1056,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              dropout_mask=dropout_mask, ifmotion=ifmotion,
              obsid=obsid,indir=indir,motion_file=motion_file,
              ank_c_0offset=ank_c_0offset,
-             chatter=chatter) 
+             chatter=chatter,ifextended=ifextended,
+             fixwidth=fixwidth) 
          # fit_sigmas parameter needs passing 
       (present0,present1,present2,present3),(q0,q1,q2,q3), (
               y0,dlim0L,dlim0U,sig0coef,sp_zeroth,co_zeroth),(
@@ -1097,7 +1105,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
              dropout_mask=dropout_mask, ifmotion=ifmotion,
              obsid=obsid,indir=indir,motion_file=motion_file,
              ank_c_0offset=ank_c_0offset,
-             chatter=chatter) 
+             chatter=chatter,ifextended=ifextended,
+             fixwidth=fixwidth) 
       (present0,present1,present2,present3),(q0,q1,q2,q3), \
           (y0,dlim0L,dlim0U,sig0coef,sp_zeroth,co_zeroth),(
           y1,dlim1L,dlim1U,sig1coef,sp_first,co_first),\
@@ -1202,10 +1211,10 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
    Yout.update({"effarea1":EffArea1,"effarea2":EffArea2})   
    
    if interactive:
-      import pylab as plt
+      import matplotlib.pyplot as plt
 
       if (plot_img) & (sumimage == None):
-         plt.winter()
+         #plt.winter()
          #   make plot of model on image [figure 1]
          #xa = np.where( (dis < 1400) & (dis > -300) )
          bga = bg.copy()
@@ -1234,7 +1243,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       plt.close()
 
       if (plot_raw):
-         plt.winter()
+         #plt.winter()
          nsubplots = 2
          #if not fit_second: nsubplots=3
          #   make plot of spectrum [figure 2]
@@ -1243,11 +1252,16 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
          # image slice 
          ax21 = plt.subplot(nsubplots,1,1)
          ac = -ank_c[1]
-         plt.winter()
-         net[net<0.] = 1e-16
-         plt.imshow(np.log10(net),vmin=-0.8,vmax=0.8,
+         net[net<=0.] = 1e-16
+         #plt.imshow(np.log10(net),vmin=-0.8,vmax=0.8, #~FIXME:
+         #           extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]),
+         #           origin='lower',cmap=plt.cm.winter)
+         plt.imshow(np.log10(net),vmin=-10,vmax=2,
                     extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]),
-                    origin='lower',cmap=plt.cm.winter)
+                    origin='lower')#,cmap=plt.cm.winter)
+         #plt.imshow(extimg,vmin=0,vmax=50,
+         #           extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]),
+         #           origin='lower')#,cmap=plt.cm.winter)
          if highlight:
              plt.contour(np.log10(net),levels=[1,1.3,1.7,2.0,3.0],
                          extent=(ac,ac+extimg.shape[1],0,extimg.shape[0]),
@@ -1433,7 +1447,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
 
 
       if (plot_spec):
-         plt.winter()
+         #plt.winter()
       #  NEED the flux cal applied!
          nsubplots = 1
          if not fit_second: 
@@ -1653,7 +1667,7 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
         searchwidth=35,spwid=13,offsetlimit=None, fixoffset=None, 
         background_lower=[None,None], background_upper=[None,None],
         template=None, x_offset = False, ank_c_0offset=False, replace=None,
-        clobber=True,chatter=2):
+        clobber=True,chatter=2,singleside_bkg=False):
    '''
    extract the grism image of spectral orders plus background
    using the reference point at 2600A in first order.
@@ -1920,7 +1934,12 @@ def extractSpecImg(file,ext,anker,angle,anker0=None,anker2=None, anker3=None,\
       
    bg, bg1, bg2, bgsigma, bgimg, bg_limits, bgextras = findBackground(c, 
        background_lower=background_lower, background_upper=background_upper,yloc_spectrum=ank_c[0] )
-       
+   if singleside_bkg == 'bg1':
+      bg2 = bg1
+   elif singleside_bkg == 'bg2':
+      bg1 = bg2
+   else:
+      pass
    bgmean = bg
    bg = 0.5*(bg1+bg2)
    if chatter > 0: print('Background : %10.2f  +/- %10.2f (1-sigma error)'%( bgmean,bgsigma)) 
@@ -3371,7 +3390,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
     composite_fit=True, test=None, chatter=0, skip_field_sources=False,\
     predict_second_order=True, ZOpos=None,outfull=False, msg='',\
     fit_second=True,fit_third=True,C_1=None,C_2=None,dist12=None, ifmotion=True,\
-    dropout_mask=None,obsid=None,indir=None,motion_file=None,ank_c_0offset=False):
+    dropout_mask=None,obsid=None,indir=None,motion_file=None,ank_c_0offset=False,ifextended=False,fixwidth=False):
    '''This routine knows about the curvature of the spectra in the UV filters  
       can provide the coefficients of the tracks of the orders
       can provide a gaussian fit to the orders
@@ -3628,14 +3647,33 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
            if chatter > 1:
                print("spectrum location set with input parameter to: y=%5.1f"%(offsetval))
            msg += "spectrum location set with input parameter to: y=%5.1f\n"%(offsetval)
-       else:    
+       else:
            if ifmotion:
                motion = abs(obsid2motion(obsid,motion_file)['V'])
                (p0,p1,p2), ier = leastsq(Fun4, (cp2.max(),anky,3.2), args=(cp2,arange(200),motion) ) #~FIXME:
+               sigma_mean=np.mean(polyval(sig1coef,x))
+               #p3= motion
+           elif fixwidth:
+               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(200)) )
+               sigma_mean=fixwidth/trackwidth #np.mean(polyval(sig1coef,x))
+               times = sigma_mean/np.mean(polyval(sig1coef,x))
+               sig0coef = times*sig0coef
+               sig1coef = times*sig1coef
+               sig2coef = times*sig2coef
+               sig3coef = times*sig3coef
+           elif ifextended:
+               (p0,p1,p2), ier = leastsq(Fun1, (cp2.max(),anky,3.2), args=(cp2,arange(200)) )
+               sigma_mean = p2
+               times = p2/np.mean(polyval(sig1coef,x))
+               #times = 1.
+               #sigma_mean = times*np.mean(polyval(sig1coef,x))
+               sig0coef = times*sig0coef
+               sig1coef = times*sig1coef
+               sig2coef = times*sig2coef
+               sig3coef = times*sig3coef
            else:
                (p0,p1), ier = leastsq(Fun1b, (cp2.max(),anky), args=(cp2,arange(200),3.2) ) 
-           #p3= motion
-           sigma_mean=np.mean(polyval(sig1coef,x))
+               sigma_mean=np.mean(polyval(sig1coef,x))
            #print(p0,p1,p2,p3,sigma_mean)
            fig = plt.figure()
            if ifmotion:
@@ -3646,6 +3684,14 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                plt.xlabel('y pixels')
                plt.ylabel('total counts')
                plt.title(obsid+' motion:'+"%.2f"%motion)
+           elif fixwidth:
+               plt.plot(arange(200),cp2)
+               plt.plot(arange(200),singlegaussian(arange(200),p0,p1,p2))
+               plt.vlines(p1-(trackwidth *sigma_mean),0,np.max(cp2),color='k')
+               plt.vlines(p1+(trackwidth *sigma_mean),0,np.max(cp2),color='k')
+               plt.xlabel('y pixels')
+               plt.ylabel('total counts')
+               plt.title(obsid)
            else:
                plt.plot(arange(200),cp2)
                plt.plot(arange(200),singlegaussian(arange(200),p0,p1,sigma_mean))
@@ -3802,7 +3848,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_zeroth[i] = bgimg[k1:k2,i].sum()
                borderup[0,i]   = k2
                borderdown[0,i] = k1
-               apercorr[0,i] = x_aperture_correction(k1,k2,sig0coef,x[i],norder=0,wheelpos=wheelpos)
+               apercorr[0,i] = x_aperture_correction(k1,k2,sig0coef,x[i],norder=0,wheelpos=wheelpos,fixwidth=fixwidth)
                if len(expmap) == 1: expospec[0,i] = expmap[0]
                else: expospec[0,i] = expmap[k1:k2,i].mean()
       
@@ -3833,10 +3879,10 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                borderdown[1,i] = k1
                if ifmotion:
                    apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,mode='gaussian',
-                                                         sigma=polyval(sig1coef,x[i]),motion=motion,ifmotion=ifmotion,wheelpos=wheelpos)
+                                                         sigma=polyval(sig1coef,x[i]),motion=motion,ifmotion=ifmotion,wheelpos=wheelpos,fixwidth=fixwidth)
                #    apercorr[1,i] = apercorr_value
                else:
-                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,wheelpos=wheelpos)
+                   apercorr[1,i] = x_aperture_correction(k1,k2,sig1coef,x[i],norder=1,wheelpos=wheelpos,fixwidth=fixwidth)
                if len(expmap) == 1: expospec[1,i] = expmap[0]
                else:  expospec[1,i] = expmap[k1:k2,i].mean()
                if dropout_mask != None:
@@ -3871,7 +3917,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_second[i] = bgimg[k1:k2,i].sum()
                borderup[2,i]   = k2
                borderdown[2,i] = k1
-               apercorr[2,i] = x_aperture_correction(k1,k2,sig2coef,x[i],norder=2,wheelpos=wheelpos)
+               apercorr[2,i] = x_aperture_correction(k1,k2,sig2coef,x[i],norder=2,wheelpos=wheelpos,fixwidth=fixwidth)
                if len(expmap) == 1: expospec[2,i] = expmap[0]
                else:  expospec[2,i] = expmap[k1:k2,i].mean()
 
@@ -3895,7 +3941,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                bg_third[i] = bgimg[k1:k2,i].sum(axis=0)
                borderup[3,i]   = k2
                borderdown[3,i] = k1
-               apercorr[3,i] = x_aperture_correction(k1,k2,sig3coef,x[i],norder=3,wheelpos=wheelpos)
+               apercorr[3,i] = x_aperture_correction(k1,k2,sig3coef,x[i],norder=3,wheelpos=wheelpos,fixwidth=fixwidth)
                if len(expmap) == 1: expospec[3,i] = expmap[0]
                else: expospec[3,i] = expmap[k1:k2,i].mean()
 
@@ -4017,7 +4063,7 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                       
       return fitorder, gfit, (bgimg,)
 
-def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wheelpos=None, sigma=3.2,motion=10, tw=2.5, ifmotion=True):
+def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wheelpos=None, sigma=3.2,motion=10, tw=2.5, ifmotion=True, fixwidth=False):
    '''Returns the aperture correction factor 
    
       parameters
@@ -4060,6 +4106,10 @@ def x_aperture_correction(k1,k2,sigcoef,x,norder=None, mode='best', coi=None, wh
    
    
    apercorr = 1.0
+
+   if fixwidth:
+       apercorr = np.ones(np.shape(apercorr)) #~FIXME: I must remove this line to do apercorr
+       return apercorr
    
    if norder == 0:       
       apercorr = 1.0/uvotmisc.GaussianHalfIntegralFraction( 0.5*(k2-k1)/np.polyval(sigcoef,x) )
