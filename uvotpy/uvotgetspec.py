@@ -928,6 +928,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       spnetimg    = exSpIm['spnetimg']
       offset      = exSpIm['offset']
       ank_c       = exSpIm['ank_c']
+
       if background_template != None:
          background_template ={"extimg":exSpIm["template_extimg"]}
          Yout.update({"template":exSpIm["template_extimg"]})
@@ -1067,7 +1068,7 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
               x,xstart,xend,sp_all,quality,co_back)  = fitorder
       # update the anchor y-coordinate 
       if chatter > 3 : print ("DEBUG 1048  update anchor coordinate\noriginal ank_c=%s\ny1=%s"%(ank_c,y1))
-      ank_c[0] = y1[np.int(ank_c[1])]         
+      ank_c[0] = y1[np.int(ank_c[1])]     
       
       Yfit.update({"coef0":coef0,"coef1":coef1,"coef2":coef2,"coef3":coef3,
       "bg_zeroth":bg_zeroth,"bg_first":bg_first,"bg_second":bg_second,"bg_third":bg_third,
@@ -1134,6 +1135,11 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
       if present1: msg += "first order"
       if present2: msg += ", second order"
       if present3: msg += ", third order "
+
+      print('1224 CCCCCCCCCCCCC', coef1)   
+      print(RA,DEC) 
+      print(anker)
+      print(ank_c)
       
       msg += '\nparametrized order curvature:\n'         
       if present0: 
@@ -1285,7 +1291,8 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
                      dims2,mlim,
                      img_angle=angle-180.0,ax=ax21)
          # plot line on anchor location 
-         plt.plot([ac+ank_c[1],ac+ank_c[1]],[0,slit_width],'k',lw=2) 
+         #plt.plot([ac+ank_c[1],ac+ank_c[1]],[0,slit_width],'k',lw=2) 
+         plt.plot(0,ank_c[0],'kx',MarkerSize=5) #~TODO:
          # plot position centre of orders  
          #if present0: plt.plot(ac+q0[0],y0[q0[0]],'k--',lw=1.2)
          #plt.plot(             ac+q1[0],y1[q1[0]],'k--',lw=1.2)
@@ -1332,7 +1339,6 @@ def getSpec(RA,DEC,obsid, ext, indir='./', wr_outfile=True,
             xlim1 = max(ac+ank_c[2], -420)
             xlim2 = min(ac+ank_c[3],1400)
          plt.xlim(xlim1,xlim2)
-         #plt.xlim(-150,450)
          plt.title(obsid+'+'+str(ext))
          
          # first order raw data plot
@@ -3685,6 +3691,12 @@ def curved_extraction(extimg,ank_c,anchor1, wheelpos, expmap=None, offset=0., \
                plt.ylabel('total counts')
                plt.title(obsid+' motion:'+"%.2f"%motion)
            elif fixwidth:
+               np.savetxt(indir+'/'+obsid+'_fit.txt',np.transpose(np.array([arange(slit_width),cp2])),delimiter=',',fmt='%.2f') #~FIXME:
+               with open(indir+'/'+obsid+'_fit.txt','r+') as f:
+                   content = f.read()
+                   f.seek(0,0)
+                   f.write('A:'+f'{p0:.2f}'+' mu:'+f'{p1:.2f}'+' sigma:'+f'{p2:.2f}'+'\n'+content)
+                   f.close()
                plt.plot(arange(slit_width),cp2)
                plt.plot(arange(slit_width),singlegaussian(arange(slit_width),p0,p1,p2))
                plt.vlines(p1-(trackwidth *sigma_mean),0,np.max(cp2),color='k')

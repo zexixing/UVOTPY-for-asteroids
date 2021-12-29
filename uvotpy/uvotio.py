@@ -387,7 +387,7 @@ def sensitivityCorrection(swifttime,wave=None,sens_rate=0.01,wheelpos=0):
           f_extrasenscorr=interp1d(extracorr[:,0],extracorr[:,1],
           bounds_error=False,fill_value=1.0)
           sens_corr=sens_corr/(f_extrasenscorr(wave) * fscale)
-          print(fscale, sens_corr)
+          #print(fscale, sens_corr)
           print ("\nsensitivityCorrection: applied additional changes in UV 1700-3000\n")
        return sens_corr*wave/wave
    else: 

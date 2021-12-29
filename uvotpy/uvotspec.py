@@ -220,7 +220,7 @@ spdata2 = {
 {'transition':'','wavevac':2937.4, 'label':u'Mg II*'},
 #{'transition':'','wavevac':2949, 'label':u'Mg V]'},
 # unsure of this one {'transition':'','wavevac':2990, 'label':u'Ni VII]'},
-{'transition':u'2s2 2p(2P°)3p 3S 1-2s2 2p(2P°)3d 3P° 2','wavevac':3133.77, 'label':u'O III*'},
+{'transition':u'2s2 2p(2Pï¿½)3p 3S 1-2s2 2p(2Pï¿½)3d 3Pï¿½ 2','wavevac':3133.77, 'label':u'O III*'},
 {'transition':'','wavevac':3287.5, 'label':u'C III 1909(2)'},
 #{'transition':'','wavevac':.0, 'label':u''}
 #{'transition':'','wavevac':3132, 'label':u'?Be II ?Fe II '},
@@ -699,9 +699,14 @@ def adjust_wavelength_manually(file=None,openfile=None,openplot=None,
                   
     spectrum, = ax.plot(w, flx,color='b',label='spectrum to fix' )
     if reference_spectrum != None:
-       colname = list(reference_spectrum.columns.keys())
-       refsp, = ax.plot(reference_spectrum[colname[0]],reference_spectrum[colname[1]],
-            color='k',label='reference spectrum')
+       if type(reference_spectrum) == str:
+          if '.pha' in reference_spectrum:
+             ref = fits.open(reference_spectrum)
+             refsp, = ax.plot(ref[2].data['LAMBDA'],ref[2].data['FLUX'],color='k',label='reference spectrum')
+       else:
+          colname = list(reference_spectrum.columns.keys())
+          refsp, = ax.plot(reference_spectrum[colname[0]],reference_spectrum[colname[1]],
+               color='k',label='reference spectrum')
     # add annotation
     if ylim[0] == None: 
        ylim = ax.get_ylim()
